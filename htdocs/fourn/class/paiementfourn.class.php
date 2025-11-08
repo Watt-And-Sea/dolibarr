@@ -175,7 +175,10 @@ class PaiementFourn extends Paiement
 		$way = $this->getWay();
 
 		$now = dol_now();
-
+		if(!empty($this->date_creation)) {
+			$now = $this->date_creation; 
+		}
+		
 		// Clean parameters
 		$totalamount = 0;
 		$totalamount_converted = 0;

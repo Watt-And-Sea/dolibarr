@@ -492,7 +492,7 @@ class Contact extends CommonObject
 		if (empty($this->date_creation)) {
 			$this->date_creation = $now;
 		}
-
+		
 		$this->db->begin();
 
 		// Clean parameters
@@ -533,7 +533,7 @@ class Contact extends CommonObject
 		$sql .= ", import_key";
 		$sql .= ", ip";
 		$sql .= ") VALUES (";
-		$sql .= "'".$this->db->idate($now)."',";
+		$sql .= "'".$this->db->idate($this->date_creation)."',";
 		if ($this->socid > 0) {
 			$sql .= " ".((int) $this->socid).",";
 		} else {

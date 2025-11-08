@@ -322,6 +322,8 @@ class SupplierInvoices extends DolibarrApi
 	 *
 	 * @param int   $id Supplier invoice ID
 	 *
+	 * @url POST    {id}/delete
+	 *
 	 * @return array
 	 * @phan-return array{success:array{code:int,message:string}}
 	 * @phpstan-return array{success:array{code:int,message:string}}
@@ -761,6 +763,7 @@ class SupplierInvoices extends DolibarrApi
 
 		$updateRes = $this->invoice->addline(
 			$request_data->description,
+			$request_data->label,
 			$request_data->pu_ht,
 			$request_data->tva_tx,
 			$request_data->localtax1_tx,
@@ -831,6 +834,7 @@ class SupplierInvoices extends DolibarrApi
 		$updateRes = $this->invoice->updateline(
 			$lineid,
 			$request_data->description,
+			$request_data->label,
 			$request_data->pu_ht,
 			$request_data->tva_tx,
 			$request_data->localtax1_tx,

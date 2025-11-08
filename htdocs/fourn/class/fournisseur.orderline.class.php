@@ -186,7 +186,7 @@ class CommandeFournisseurLigne extends CommonOrderLine
 			$objp = $this->db->fetch_object($result);
 
 			if (!empty($objp)) {
-				$this->rowid = $objp->rowid;
+				$this->rowid            = $objp->rowid;
 				$this->id               = $objp->rowid;
 				$this->fk_commande      = $objp->fk_commande;
 				$this->desc             = $objp->description;
@@ -247,7 +247,7 @@ class CommandeFournisseurLigne extends CommonOrderLine
 
 				$this->date_start       		= $this->db->jdate($objp->date_start);
 				$this->date_end         		= $this->db->jdate($objp->date_end);
-				$this->fk_unit = $objp->fk_unit;
+				$this->fk_unit                  = $objp->fk_unit;
 
 				$this->extraparams = !empty($objp->extraparams) ? (array) json_decode($objp->extraparams, true) : array();
 
