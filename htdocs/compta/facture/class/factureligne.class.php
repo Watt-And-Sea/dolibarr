@@ -481,7 +481,7 @@ class FactureLigne extends CommonInvoiceLine
 		}
 
 		// Check parameters
-		if ($this->product_type < 0) {
+		if ($this->product_type < -1) {
 			$this->error = 'ErrorProductTypeMustBe0orMore';
 			return -1;
 		}
@@ -712,7 +712,7 @@ class FactureLigne extends CommonInvoiceLine
 		}
 
 		// Check parameters
-		if ($this->product_type < 0) {
+		if ($this->product_type < -1) {
 			return -1;
 		}
 

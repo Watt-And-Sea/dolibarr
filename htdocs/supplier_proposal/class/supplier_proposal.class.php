@@ -496,7 +496,7 @@ class SupplierProposal extends CommonObject
 		}
 
 		// Check parameters
-		if ($type < 0) {
+		if ($type < -1) {
 			return -1;
 		}
 
@@ -3371,7 +3371,7 @@ class SupplierProposalLine extends CommonObjectLine
 		}
 
 		// Check parameters
-		if ($this->product_type < 0) {
+		if ($this->product_type < -1) {
 			return -1;
 		}
 

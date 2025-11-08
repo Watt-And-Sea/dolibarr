@@ -679,6 +679,7 @@ class CommandeFournisseur extends CommonOrder
 
 				$line->id                  = $objp->rowid;
 				$line->fk_commande         = $objp->fk_commande;
+				$line->label               = $objp->label; // MM
 				$line->desc                = $objp->description;
 				$line->description         = $objp->description;
 				$line->qty                 = $objp->qty;
@@ -2077,7 +2078,7 @@ class CommandeFournisseur extends CommonOrder
 				$this->error = $langs->trans("ErrorFieldRequired", $langs->transnoentitiesnoconv("Product"));
 				return -1;
 			}
-			if ($type < 0) {
+			if ($type < -1) {  //fix MM
 				return -1;
 			}
 			if ($date_start && $date_end && $date_start > $date_end) {
@@ -2090,7 +2091,9 @@ class CommandeFournisseur extends CommonOrder
 			$this->db->begin();
 
 			$product_type = $type;
-			$label = '';	// deprecated
+			if (empty($label)) {
+				$label = '';
+			}
 
 			if ($fk_product > 0) {
 				if (getDolGlobalInt('SUPPLIER_ORDER_WITH_PREDEFINED_PRICES_ONLY') == 1) {	// Not the common case
@@ -3137,7 +3140,7 @@ class CommandeFournisseur extends CommonOrder
 			$txlocaltax2 = (float) price2num($txlocaltax2);
 
 			// Check parameters
-			if ($type < 0) {
+			if ($type < -1) {
 				return -1;
 			}
 			if ($date_start && $date_end && $date_start > $date_end) {

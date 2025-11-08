@@ -4259,7 +4259,7 @@ class Facture extends CommonInvoice
 			}
 
 			// Check parameters
-			if ($type < 0) {
+			if ($type < -1) {
 				return -1;
 			}
 
@@ -4573,7 +4573,7 @@ class Facture extends CommonInvoice
 			$txlocaltax2 = (float) price2num($txlocaltax2);
 
 			// Check parameters
-			if ($type < 0) {
+			if ($type < -1) {
 				return -1;
 			}
 

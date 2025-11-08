@@ -2258,7 +2258,7 @@ class FactureFournisseur extends CommonInvoice
 			$pu_ht_devise = $tabprice[19];
 
 			// Check parameters
-			if ($type < 0) {
+			if ($type < -1) {
 				return -1;
 			}
 
@@ -2401,7 +2401,7 @@ class FactureFournisseur extends CommonInvoice
 
 		// Check parameters
 		//if (! is_numeric($pu) || ! is_numeric($qty)) return -1;
-		if ($type < 0) {
+		if ($type < -1) {
 			return -1;
 		}
 

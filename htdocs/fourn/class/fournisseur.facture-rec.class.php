@@ -990,7 +990,7 @@ class FactureFournisseurRec extends CommonInvoice
 		dol_syslog(get_class($this)."::addline facid=$facid,desc=$desc,pu_ht=$pu_ht,qty=$qty,txtva=$txtva,txlocaltax1=$txlocaltax1,txlocaltax2=$txlocaltax2,fk_product=$fk_product,remise_percent=$remise_percent,info_bits=$info_bits,price_base_type=$price_base_type,pu_ttc=$pu_ttc,type=$type,fk_unit=$fk_unit,pu_ht_devise=$pu_ht_devise,date_start_fill=$date_start,date_end_fill=$date_end", LOG_DEBUG);
 
 		// Check if object of the line is product or service
-		if ($type < 0) {
+		if ($type < -1) {
 			return -1;
 		}
 
@@ -1182,7 +1182,7 @@ class FactureFournisseurRec extends CommonInvoice
 		include_once DOL_DOCUMENT_ROOT.'/core/lib/price.lib.php';
 
 		// Check parameters
-		if ($type < 0) {
+		if ($type < -1) {
 			return -1;
 		}
 

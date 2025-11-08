@@ -1655,7 +1655,7 @@ class Commande extends CommonOrder
 			$desc = trim($desc);
 
 			// Check parameters
-			if ($type < 0) {
+			if ($type < -1) {
 				return -1;
 			}
 

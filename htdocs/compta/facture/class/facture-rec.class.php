@@ -984,7 +984,7 @@ class FactureRec extends CommonInvoice
 		include_once DOL_DOCUMENT_ROOT.'/core/lib/price.lib.php';
 
 		// Check parameters
-		if ($type < 0) {
+		if ($type < -1) {
 			return -1;
 		}
 
@@ -1196,7 +1196,7 @@ class FactureRec extends CommonInvoice
 		}
 
 		// Check parameters
-		if ($type < 0) {
+		if ($type < -1) {
 			return -1;
 		}
 

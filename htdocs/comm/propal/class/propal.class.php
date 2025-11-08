@@ -708,7 +708,7 @@ class Propal extends CommonObject
 			}
 
 			// Check parameters
-			if ($type < 0) {
+			if ($type < -1) {
 				return -1;
 			}
 

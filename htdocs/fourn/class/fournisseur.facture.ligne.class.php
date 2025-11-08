@@ -476,7 +476,7 @@ class SupplierInvoiceLine extends CommonObjectLine
 			$this->qty = 0;
 		}
 
-		if ($this->product_type < 0) {
+		if ($this->product_type < -1) {
 			return -1;
 		}
 
@@ -675,7 +675,7 @@ class SupplierInvoiceLine extends CommonObjectLine
 
 
 		// Check parameters
-		if ($this->product_type < 0) {
+		if ($this->product_type < -1) {
 			$this->error = 'ErrorProductTypeMustBe0orMore';
 			return -1;
 		}
