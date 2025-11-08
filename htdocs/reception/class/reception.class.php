@@ -286,7 +286,10 @@ class Reception extends CommonObject
 	{
 		global $conf;
 
-		$now = dol_now();
+		$date_creation = dol_now();
+		if(!empty($this->date_creation)) {
+			$date_creation = $this->date_creation; 
+		}
 
 		require_once DOL_DOCUMENT_ROOT.'/product/stock/class/mouvementstock.class.php';
 		$error = 0;
@@ -389,8 +392,10 @@ class Reception extends CommonObject
 				}
 
 				if (!$error && $this->id && $this->origin_id) {
+					dol_syslog(get_class($this)."::create calling add_object_linked with origin=".$this->id." origin_id=".$this->origin_id, LOG_DEBUG);
 					$ret = $this->add_object_linked();
 					if (!$ret) {
+						dol_syslog(get_class($this)."::create add_object_linked failed: ".$this->error, LOG_ERR);
 						$error++;
 					}
 				}
@@ -672,6 +677,22 @@ class Reception extends CommonObject
 		if (!$resql) {
 			$this->error = $this->db->lasterror();
 			$error++;
+		}
+
+
+		if (empty($this->lines)) {
+			$this->fetch_lines();
+		}
+		//Update the line status 
+		foreach ($this->lines as $line) {
+			$line->status = 1;
+			$result = $line->update($user);
+			if ($result < 0) {
+				$error++;
+				$this->error = $line->error;
+				dol_syslog(get_class($this)."::valid line update failed: ".$this->error, LOG_ERR);
+				break;
+			}
 		}
 
 		// If stock increment is done on reception (recommended choice)

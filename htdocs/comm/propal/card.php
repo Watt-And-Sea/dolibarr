@@ -1955,8 +1955,8 @@ if (empty($reshook)) {
 			$res = $product->fetch($productid);
 
 			$type = $product->type;
-			$$price_base_type = $product->price_base_type;
-			$label = ((GETPOST('update_label') && GETPOST('product_label')) ? GETPOST('product_label') : '');
+			// $label = ((GETPOST('update_label') && GETPOST('product_label')) ? GETPOST('product_label') : '');  //'update_label' seems not referenced anywhere
+			$label = (GETPOST('product_label') ? GETPOST('product_label') : ''); //MODIF MM
 
 			$price_min = $product->price_min;
 			if ((getDolGlobalString('PRODUIT_MULTIPRICES') || getDolGlobalString('PRODUIT_CUSTOMER_PRICES_AND_MULTIPRICES')) && !empty($object->thirdparty->price_level)) {

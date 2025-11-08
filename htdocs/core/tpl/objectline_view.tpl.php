@@ -182,39 +182,60 @@ if (($line->info_bits & 2) == 2) {
 } else {
 	$format = (getDolGlobalInt('MAIN_USE_HOURMIN_IN_DATE_RANGE') ? 'dayhour' : 'day');
 
-	if ($line->fk_product > 0) {
-		if (getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')) {
-			print (!empty($line->fk_parent_line) ? img_picto('', 'rightarrow') : '') . $text;
-			if (!getDolGlobalInt('PRODUIT_DESC_IN_FORM')) {
-				print $form->textwithpicto('', $description);
-			}
-		} else {
-			print $form->textwithtooltip($text, $description, 3, 0, '', (string) $i, 0, (!empty($line->fk_parent_line) ? img_picto('', 'rightarrow') : ''));
-		}
+	$type = (!empty($line->product_type) ? $line->product_type : $line->fk_product_type);
+	
+	if ($type == 1) {
+	    $text = img_object($langs->trans('Service'), 'service');
+	} elseif ($type == -1) {
+	    // Ligne d'information
+	    $text = img_info('').' ';
 	} else {
-		$type = (!empty($line->product_type) ? $line->product_type : $line->fk_product_type);
-		if ($type == 1) {
-			$text = img_object($langs->trans('Service'), 'service');
-		} else {
-			$text = img_object($langs->trans('Product'), 'product');
-		}
-
-		if (!empty($line->label)) {
-			$text .= ' <strong>'.$line->label.'</strong>';
-			print $form->textwithtooltip($text, dol_htmlentitiesbr($line->description), 3, 0, '', (string) $i, 0, (!empty($line->fk_parent_line) ? img_picto('', 'rightarrow') : ''));
-		} else {
-			if (!empty($line->fk_parent_line)) {
-				print img_picto('', 'rightarrow');
-			}
-			if (preg_match('/^\(DEPOSIT\)/', $line->description)) {
-				$newdesc = preg_replace('/^\(DEPOSIT\)/', $langs->trans("Deposit"), $line->description);
-				print $text.' '.dol_htmlentitiesbr($newdesc);
-			} else {
-				print $text.' '.dol_htmlentitiesbr($line->description);
-			}
-		}
+	    $text = img_object($langs->trans('Product'), 'product');
 	}
 
+	if (getDolGlobalString('PRODUIT_LABEL_IN_FORM')) {
+		if (!empty($line->label)) {
+	        // Pour les lignes libres ou d'information, utiliser label
+	        $text .= ' <strong>'.$line->label.'</strong><br>';
+	    } elseif ($line->fk_product > 0 && !empty($line->product_label)) {
+	        // Pour les produits, utiliser product_label
+	        $text .= ' <strong>'.$line->product_label.'</strong>';
+	    }
+	}
+
+	if ($line->fk_product > 0) {
+	    if (getDolGlobalInt('MAIN_ENABLE_AJAX_TOOLTIP')) {
+	        print (!empty($line->fk_parent_line) ? img_picto('', 'rightarrow') : '') . $text;
+	        if (!getDolGlobalInt('PRODUIT_DESC_IN_FORM')) {
+	            print $form->textwithpicto('', $description);
+	        }
+	    } else {
+	        if (getDolGlobalString('PRODUIT_LABEL_IN_FORM')) {
+	            print $form->textwithpicto($text, dol_htmlentitiesbr($line->description), 1, 'none');
+	        } else {
+	            print $form->textwithtooltip($text.' '.dol_htmlentitiesbr($line->description), '', 3, 0, '', $i, 0, (!empty($line->fk_parent_line) ? img_picto('', 'rightarrow') : ''));
+	        }
+	    }
+	} else {
+	    // Lignes sans produit (lignes libres ou d'information)
+	    if (!empty($line->label) || !empty($line->description)) {
+	        if (getDolGlobalString('PRODUIT_LABEL_IN_FORM')) {
+	            print $form->textwithpicto($text.' '.dol_htmlentitiesbr($line->description), '', 1, 'none', '', $i, 0, (!empty($line->fk_parent_line) ? img_picto('', 'rightarrow') : ''));
+	        } else {
+	            print $form->textwithtooltip($text.' '.dol_htmlentitiesbr($line->description), '', 3, 0, '', $i, 0, (!empty($line->fk_parent_line) ? img_picto('', 'rightarrow') : ''));
+	        }
+	    } else {
+	        if (!empty($line->fk_parent_line)) {
+	            print img_picto('', 'rightarrow');
+	        }
+	        if (preg_match('/^\(DEPOSIT\)/', $line->description)) {
+	            $newdesc = preg_replace('/^\(DEPOSIT\)/', $langs->trans("Deposit"), $line->description);
+	            print $text.' '.dol_htmlentitiesbr($newdesc);
+	        } else {
+	            print $text.' '.dol_htmlentitiesbr($line->description);
+	        }
+	    }
+	}
 	// Show date range
 	if ($line->element == 'facturedetrec' || $line->element == 'invoice_supplier_det_rec') {
 		if ($line->element == 'invoice_supplier_det_rec' && $line->product_type != Product::TYPE_PRODUCT) {
@@ -271,7 +292,7 @@ if (($line->info_bits & 2) == 2) {
 		if ($line->element == 'facturedetrec') {
 			print (!empty($line->description) && $line->description != $line->product_label) ? (($line->date_start_fill || $line->date_end_fill) ? '' : '<br>').'<br>'.dol_htmlentitiesbr($line->description) : '';
 		} else {
-			print (!empty($line->description) && $line->description != $line->product_label) ? (($line->date_start || $line->date_end) ? '' : '<br>').'<br>'.dol_htmlentitiesbr($line->description) : '';
+			print (!empty($line->description) && $line->description != $line->product_label) ? (($line->date_start || $line->date_end) ? '' : '<br>').dol_htmlentitiesbr($line->description) : '';
 		}
 	}
 
@@ -386,42 +407,49 @@ if (!getDolGlobalString('MAIN_OPTIMIZEFORTEXTBROWSER')) {
 	$tooltiponpriceendmultiprice = '</span>';
 }
 
-// VAT Rate
+// VAT Rate column
 print '<td class="linecolvat nowrap right">';
 $coldisplay++;
 $positiverates = '';
-if (price2num($line->tva_tx)) {
-	$positiverates .= ($positiverates ? '/' : '').price2num($line->tva_tx);
+if($type != -1){
+	if (price2num($line->tva_tx)) {
+		$positiverates .= ($positiverates ? '/' : '').price2num($line->tva_tx);
+	}
+	if (price2num($line->total_localtax1)) {
+		$positiverates .= ($positiverates ? '/' : '').price2num($line->localtax1_tx);
+	}
+	if (price2num($line->total_localtax2)) {
+		$positiverates .= ($positiverates ? '/' : '').price2num($line->localtax2_tx);
+	}
+	if (empty($positiverates)) {
+		$positiverates = '0';
+	}
+	print $tooltiponprice;
+	print vatrate($positiverates.($line->vat_src_code ? ' ('.$line->vat_src_code.')' : ''), true, $line->info_bits);
+	print $tooltiponpriceend;
 }
-if (price2num($line->localtax1_tx)) {
-	$positiverates .= ($positiverates ? '/' : '').price2num($line->localtax1_tx);
-}
-if (price2num($line->localtax2_tx)) {
-	$positiverates .= ($positiverates ? '/' : '').price2num($line->localtax2_tx);
-}
-if (empty($positiverates)) {
-	$positiverates = '0';
-}
-print $tooltiponprice;
-print vatrate($positiverates.($line->vat_src_code ? ' ('.$line->vat_src_code.')' : ''), true, $line->info_bits);
-print $tooltiponpriceend;
 ?></td>
 
-	<td class="linecoluht nowraponall right"><?php $coldisplay++; ?><?php print price($sign * $line->subprice); ?></td>
+	<td class="linecoluht nowraponall right"><?php $coldisplay++; ?><?php print ($type != -1)?price($sign * $line->subprice):''; ?></td>
 
 <?php if (isModEnabled("multicurrency") && $this->multicurrency_code && $this->multicurrency_code != $conf->currency) { ?>
 	<td class="linecoluht_currency nowraponall right"><?php $coldisplay++; ?><?php print price($sign * $line->multicurrency_subprice); ?></td>
 <?php }
 
-if (!empty($inputalsopricewithtax) && !getDolGlobalInt('MAIN_NO_INPUT_PRICE_WITH_TAX')) { ?>
-	<td class="linecoluttc nowraponall right"><?php $coldisplay++; ?><?php
-	$upinctax = isset($line->pu_ttc) ? $line->pu_ttc : null;
-	if (getDolGlobalInt('MAIN_UNIT_PRICE_WITH_TAX_IS_FOR_ALL_TAXES')) {
-		$upinctax = price2num($line->total_ttc / (float) $line->qty, 'MU');
-	}
-	print(isset($upinctax) ? price($sign * $upinctax) : price($sign * $line->subprice));
-	?></td>
-<?php }
+if (!empty($inputalsopricewithtax) && !getDolGlobalInt('MAIN_NO_INPUT_PRICE_WITH_TAX')) { 
+	if ($type == -1){ ?>
+		<td class="linecoluttc nowraponall right"><?php $coldisplay++; ?></td>
+	<?php } else {
+		?>
+		<td class="linecoluttc nowraponall right"><?php $coldisplay++; ?><?php
+		$upinctax = isset($line->pu_ttc) ? $line->pu_ttc : null;
+		if (getDolGlobalInt('MAIN_UNIT_PRICE_WITH_TAX_IS_FOR_ALL_TAXES')) {
+			$upinctax = price2num($line->total_ttc / (float) $line->qty, 'MU');
+		}
+		print(isset($upinctax) ? price($sign * $upinctax) : price($sign * $line->subprice));
+		?></td>
+	<?php }
+} ?>
 
 // Multicurrency TTC
 if (isModEnabled("multicurrency") && $this->multicurrency_code && $this->multicurrency_code != $conf->currency && !empty($inputalsopricewithtax) && !getDolGlobalInt('MAIN_NO_INPUT_PRICE_WITH_TAX')) { ?>
@@ -455,6 +483,7 @@ if (getDolGlobalString('PRODUCT_USE_UNITS')) {
 	print $label;
 	print '</td>';
 }
+// Discount column
 if (!empty($line->remise_percent) && $line->special_code != 3) {
 	print '<td class="linecoldiscount right">';
 	$coldisplay++;
@@ -488,8 +517,8 @@ if (isset($this->situation_cycle_ref) && $this->situation_cycle_ref) {
 		print '<td class="linecolcycleref2 right nowrap">'.price($sign * (float) $tmp[0]).'</td>';
 	}
 }
-
-if ($usemargins && isModEnabled('margin') && empty($user->socid)) {
+//Margin column
+if ($usemargins && isModEnabled('margin') && empty($user->socid) && ($type>=0)) {
 	if ($user->hasRight('margins', 'creer')) { ?>
 		<td class="linecolmargin1 nowrap margininfos right"><?php $coldisplay++; ?><?php print price($line->pa_ht); ?></td>
 	<?php }
@@ -502,7 +531,9 @@ if ($usemargins && isModEnabled('margin') && empty($user->socid)) {
 }
 
 // Price total without tax
-if ($line->special_code == 3) {
+if($type == -1) { ?>
+	<td class="linecoloption nowrap right"><?php $coldisplay++; ?></td>
+<?php } elseif ($line->special_code == 3) {
 	$coldisplay++;
 	$colspanOptions	= '';
 	if (isModEnabled('multicurrency') && $object->multicurrency_code != $conf->currency) {
