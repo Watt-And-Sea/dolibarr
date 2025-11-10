@@ -279,11 +279,29 @@ class ReceptionLineBatch extends CommonObjectLine
 		$sql .= "batch,";
 		$sql .= "eatby,";
 		$sql .= "sellby,";
-		$sql .= ", fk_unit";
-		$sql .= ", description";
-		$sql .= ", rang";
-		$sql .= "fk_reception,";
-		$sql .= "cost_price";
+		// Ajout conditionnel des colonnes optionnelles (sans virgule leading si première)
+		$first_optional = true;
+		if (isset($this->fk_unit) && $this->fk_unit !== null) {
+		    $sql .= ($first_optional ? '' : ',') . "fk_unit";
+		    $first_optional = false;
+		}
+		if (!empty($this->description)) {
+		    $sql .= ($first_optional ? '' : ',') . "description";
+		    $first_optional = false;
+		}
+		if (isset($ranktouse)) {  // $ranktouse est défini dans le code original
+		    $sql .= ($first_optional ? '' : ',') . "rang";
+		    $first_optional = false;
+		}
+		if (isset($this->fk_reception)) {
+		    $sql .= ($first_optional ? '' : ',') . "fk_reception";
+		    $first_optional = false;
+		}
+		if (isset($this->cost_price)) {
+		    $sql .= ($first_optional ? '' : ',') . "cost_price";
+		    $first_optional = false;
+		}
+
 		$sql .= ") VALUES (";
 		$sql .= " ".(!isset($this->fk_product) ? 'NULL' : (int) $this->fk_product).",";
 		$sql .= " ".(!isset($this->fk_element) ? 'NULL' : (int) $this->fk_element).",";
@@ -298,11 +316,28 @@ class ReceptionLineBatch extends CommonObjectLine
 		$sql .= " ".(!isset($this->batch) ? 'NULL' : "'".$this->db->escape($this->batch)."'").",";
 		$sql .= " ".(!isset($this->eatby) || dol_strlen((string) $this->eatby) == 0 ? 'NULL' : "'".$this->db->idate($this->eatby)."'").",";
 		$sql .= " ".(!isset($this->sellby) || dol_strlen((string) $this->sellby) == 0 ? 'NULL' : "'".$this->db->idate($this->sellby)."'").",";
-		$sql .= ", ".((int) $this->fk_unit);
-		$sql .= ", '".(empty($this->description) ? '' : $this->db->escape($this->description))."'";
-		$sql .= ", ".((int) $ranktouse).",";
-		$sql .= " ".((int) $this->fk_reception).",";
-		$sql .= " ".(!isset($this->cost_price) ? '0' : (float) $this->cost_price);
+		// Ajout conditionnel des VALUES (sans virgule leading si première)
+		$first_optional_val = true;
+		if (isset($this->fk_unit) && $this->fk_unit !== null) {
+		    $sql .= ($first_optional_val ? '' : ',') . (int) $this->fk_unit;
+		    $first_optional_val = false;
+		}
+		if (!empty($this->description)) {
+		    $sql .= ($first_optional_val ? '' : ',') . "'".$this->db->escape($this->description)."'";
+		    $first_optional_val = false;
+		}
+		if (isset($ranktouse)) {
+		    $sql .= ($first_optional_val ? '' : ',') . (int) $ranktouse;
+		    $first_optional_val = false;
+		}
+		if (isset($this->fk_reception)) {
+		    $sql .= ($first_optional_val ? '' : ',') . (int) $this->fk_reception;
+		    $first_optional_val = false;
+		}
+		if (isset($this->cost_price)) {
+		    $sql .= ($first_optional_val ? '' : ',') . (float) $this->cost_price;
+		    $first_optional_val = false;
+		}
 		$sql .= ")";
 
 		$this->db->begin();

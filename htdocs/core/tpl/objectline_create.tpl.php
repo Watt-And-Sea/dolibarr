@@ -206,7 +206,7 @@ if ($nolinesbefore) {
 	}
 	$coldisplay++;
 	?>
-	<td class="nobottom linecoldescription minwidth400imp" colspan="15">
+	<td class="nobottom linecoldescription minwidth400imp">
 		<?php
 		$freelines = false;
 		if (!getDolGlobalString('MAIN_DISABLE_FREE_LINES')) {
@@ -434,14 +434,6 @@ if ($nolinesbefore) {
 				echo '<div id="attributes_box"></div>';
 			}
 		}
-		?>
-		</td></tr>
-		<tr class="pair nobottom nodrag nodrop nohoverpair"><td>
-		<?php
-		//Label of product
-		if (getDolGlobalString('PRODUIT_LABEL_IN_FORM')) {
-			echo '<span><input type="text" name="product_label" id="product_label" class="flat left" style="width:100%; padding-right:0; padding-left:0;" placeholder='.$langs->trans("Label").' value=></span>' ;  //ajout MM
-		}
 		// Editor wysiwyg
 		require_once DOL_DOCUMENT_ROOT.'/core/class/doleditor.class.php';
 		$nbrows = ROWS_2;
@@ -481,11 +473,10 @@ if ($nolinesbefore) {
 		echo '</td>';
 		if ($object->element == 'supplier_proposal' || $object->element == 'order_supplier' || $object->element == 'invoice_supplier' || $object->element == 'invoice_supplier_rec') {	// We must have same test in printObjectLines
 			$coldisplay++; ?>
-		<td class="nobottom linecolrefsupplier" style="vertical-align: top"><input id="fourn_ref" name="fourn_ref" class="flat minwidth50 maxwidth100 maxwidth125onsmartphone" value="<?php echo(GETPOSTISSET("fourn_ref") ? GETPOST("fourn_ref", 'alpha', 2) : ''); ?>"></td>
+	<td class="nobottom linecolrefsupplier"><input id="fourn_ref" name="fourn_ref" class="flat minwidth50 maxwidth100 maxwidth125onsmartphone" value="<?php echo(GETPOSTISSET("fourn_ref") ? GETPOST("fourn_ref", 'alpha', 2) : ''); ?>"></td>
 					<?php
 		}
-		// VAT column
-		print '<td class="nobottom linecolvat right" style="vertical-align: top">';
+		print '<td class="nobottom linecolvat right">';
 		$coldisplay++;
 		$type_tva = 0;
 		if ($object->element == 'propal' || $object->element == 'commande' || $object->element == 'facture' || $object->element == 'facturerec') {
@@ -501,7 +492,7 @@ if ($nolinesbefore) {
 		?>
 	</td>
 
-	<td class="nobottom linecoluht right" style="vertical-align: top"><?php $coldisplay++; ?>
+	<td class="nobottom linecoluht right"><?php $coldisplay++; ?>
 		<input type="text" name="price_ht" id="price_ht" class="flat right width50" value="<?php echo(GETPOSTISSET("price_ht") ? GETPOST("price_ht", 'alpha', 2) : ''); ?>">
 	</td>
 
@@ -515,7 +506,7 @@ if ($nolinesbefore) {
 	}
 	if (!empty($inputalsopricewithtax) && !getDolGlobalInt('MAIN_NO_INPUT_PRICE_WITH_TAX')) {
 		$coldisplay++; ?>
-		<td class="nobottom linecoluttc right" style="vertical-align: top">
+		<td class="nobottom linecoluttc right">
 			<input type="text" name="price_ttc" id="price_ttc" class="flat right width50" value="<?php echo(GETPOSTISSET("price_ttc") ? GETPOST("price_ttc", 'alpha', 2) : ''); ?>">
 		</td>
 					<?php
@@ -529,14 +520,14 @@ if ($nolinesbefore) {
 	}
 	$coldisplay++;
 	?>
-	<td class="nobottom linecolqty right" style="vertical-align: top">
+	<td class="nobottom linecolqty right">
 	<?php $default_qty = (!getDolGlobalString('MAIN_OBJECTLINE_CREATE_EMPTY_QTY_BY_DEFAULT') ? 1 : ''); ?>
 	<input type="text" name="qty" id="qty" class="flat width40 right" value="<?php echo(GETPOSTISSET("qty") ? GETPOST("qty", 'alpha', 2) : $default_qty); ?>">
 	</td>
 	<?php
 	if (getDolGlobalInt('PRODUCT_USE_UNITS')) {
 		$coldisplay++;
-		print '<td class="nobottom linecoluseunit left" style="vertical-align: top">';
+		print '<td class="nobottom linecoluseunit left">';
 		print $form->selectUnits(empty($line->fk_unit) ? getDolGlobalInt('PRODUCT_USE_UNITS') : $line->fk_unit, "units");
 		print '</td>';
 	}
@@ -547,7 +538,7 @@ if ($nolinesbefore) {
 	$coldisplay++;
 	?>
 
-	<td class="nobottom nowrap linecoldiscount right" style="vertical-align: top"><input type="text" name="remise_percent" id="remise_percent" class="flat width40 right" value="<?php echo(GETPOSTISSET("remise_percent") ? GETPOST("remise_percent", 'alpha', 2) : ($remise_percent ? $remise_percent : '')); ?>"><span class="opacitymedium hideonsmartphone">%</span></td>
+	<td class="nobottom nowrap linecoldiscount right"><input type="text" name="remise_percent" id="remise_percent" class="flat width40 right" value="<?php echo(GETPOSTISSET("remise_percent") ? GETPOST("remise_percent", 'alpha', 2) : ($remise_percent ? $remise_percent : '')); ?>"><span class="opacitymedium hideonsmartphone">%</span></td>
 	<?php
 	if (isset($this->situation_cycle_ref) && $this->situation_cycle_ref) {
 		$coldisplay++;
@@ -562,7 +553,7 @@ if ($nolinesbefore) {
 	if (!empty($usemargins)) {
 		if ($user->hasRight('margins', 'creer')) {
 			$coldisplay++; ?>
-			<td class="nobottom margininfos linecolmargin right" style="vertical-align: top">
+			<td class="nobottom margininfos linecolmargin right">
 				<!-- For predef product -->
 						<?php if (isModEnabled("product") || isModEnabled("service")) { ?>
 					<select id="fournprice_predef" name="fournprice_predef" class="flat minwidth75imp maxwidth150" style="display: none;"></select>
@@ -583,7 +574,7 @@ if ($nolinesbefore) {
 	}
 	$coldisplay += $colspan;
 	?>
-	<td class="nobottom linecoledit center valignmiddle" style="vertical-align: top" colspan="<?php echo $colspan; ?>">
+	<td class="nobottom linecoledit center valignmiddle" colspan="<?php echo $colspan; ?>">
 		<input type="submit" class="button reposition" value="<?php echo $langs->trans('Add'); ?>" name="addline" id="addline">
 	</td>
 </tr>
@@ -873,149 +864,7 @@ if (!empty($usemargins) && $user->hasRight('margins', 'creer')) {
 				var pbq = parseInt($('option:selected', this).attr('data-pbq'));	/* If product was selected with a HTML select */
 				if (isNaN(pbq)) { pbq = jQuery('#idprod').attr('data-pbq'); } 		/* If product was selected with a HTML input with autocomplete */
 
-<<<<<<< Updated upstream
 				if ((jQuery('#idprod').val() > 0 || jQuery('#idprodfournprice').val()) && ! isNaN(pbq) && pbq > 0)
-=======
-						$('#date_start').removeAttr('type');
-						$('#date_end').removeAttr('type');
-						$('#date_start').attr('type', data.type);
-						$('#date_end').attr('type', data.type);
-
-						$('#date_start').removeAttr('mandatoryperiod');
-						$('#date_end').removeAttr('mandatoryperiod');
-						$('#date_start').attr('mandatoryperiod', data.mandatory_period);
-						$('#date_end').attr('mandatoryperiod', data.mandatory_period);
-
-						// service and we set mandatory_period to true
-						if (data.mandatory_period == 1 && data.type == 1) {
-							jQuery('#date_start').addClass('inputmandatory');
-							jQuery('#date_end').addClass('inputmandatory');
-						} else {
-							jQuery('#date_start').removeClass('inputmandatory');
-							jQuery('#date_end').removeClass('inputmandatory');
-						}
-
-						if (<?php echo (int) $inputalsopricewithtax; ?> == 1 && data.pricebasetype == 'TTC' && <?php print getDolGlobalInt('MAIN_NO_INPUT_PRICE_WITH_TAX') ? 'false' : 'true'; ?>) {
-							console.log("objectline_create.tpl set content of price_ttc");
-							jQuery("#price_ttc").val(data.price_ttc);
-						} else {
-							console.log("objectline_create.tpl set content of price_ht");
-							jQuery("#price_ht").val(data.price_ht);
-						}
-
-						// Set values for any fields in the form options_SOMETHING
-						for (var key in data.array_options) {
-							if (data.array_options.hasOwnProperty(key)) {
-								var field = jQuery("#" + key);
-								if(field.length > 0){
-									console.log("objectline_create.tpl set content of options_" + key);
-									field.val(data.array_options[key]);
-								}
-							}
-						}
-
-						var tva_tx = data.tva_tx;
-						var default_vat_code = data.default_vat_code;
-
-						// Now set the VAT
-						var stringforvatrateselection = tva_tx;
-						if (typeof default_vat_code != 'undefined' && default_vat_code != null && default_vat_code != '') {
-							stringforvatrateselection = stringforvatrateselection+' ('+default_vat_code+')';
-							<?php
-							// Special case for India
-							if (getDolGlobalString('MAIN_SALETAX_AUTOSWITCH_I_CS_FOR_INDIA')) {
-								?>
-								console.log("MAIN_SALETAX_AUTOSWITCH_I_CS_FOR_INDIA is on so we check if we need to autoswith the vat code");
-								console.log("mysoc->country_code=<?php echo $mysoc->country_code; ?> thirdparty->country_code=<?php echo $object->thirdparty->country_code; ?>");
-								new_default_vat_code = default_vat_code;
-								<?php
-								if ($mysoc->country_code == 'IN' && !empty($object->thirdparty) && $object->thirdparty->country_code == 'IN' && $mysoc->state_code == $object->thirdparty->state_code) {
-									// We are in India and states are same, we revert the vat code "I-x" into "CS-x"
-									?>
-									console.log("Countries are both IN and states are same, so we revert I into CS in default_vat_code="+default_vat_code);
-									new_default_vat_code = default_vat_code.replace(/^I\-/, 'C+S-');
-									<?php
-								} elseif ($mysoc->country_code == 'IN' && !empty($object->thirdparty) && $object->thirdparty->country_code == 'IN' && $mysoc->state_code != $object->thirdparty->state_code) {
-									// We are in India and states differs, we revert the vat code "CS-x" into "I-x"
-									?>
-									console.log("Countries are both IN and states differs, so we revert CS into I in default_vat_code="+default_vat_code);
-									new_default_vat_code = default_vat_code.replace(/^C\+S\-/, 'I-');
-									<?php
-								} ?>
-								if (new_default_vat_code != default_vat_code && jQuery('#tva_tx option:contains("'+new_default_vat_code+'")').val()) {
-									console.log("We found en entry into VAT with new default_vat_code, we will use it");
-									stringforvatrateselection = jQuery('#tva_tx option:contains("'+new_default_vat_code+'")').val();
-								}
-								<?php
-							} ?>
-						}
-						// Set vat rate if field is an input box
-						$('#tva_tx').val(tva_tx);
-						// Set vat rate by selecting the combo
-						//$('#tva_tx option').val(tva_tx);	// This is bugged, it replaces the vat key of all options
-						$('#tva_tx option').removeAttr('selected');
-						console.log("stringforvatrateselection="+stringforvatrateselection+" -> value of option label for this key="+$('#tva_tx option[value="'+stringforvatrateselection+'"]').val());
-						$('#tva_tx option[value="'+stringforvatrateselection+'"]').prop('selected', true);
-
-							<?php
-							if (getDolGlobalInt('PRODUIT_AUTOFILL_DESC') == 1) {
-								if (getDolGlobalInt('MAIN_MULTILANGS') && getDolGlobalString('PRODUIT_TEXTS_IN_THIRDPARTY_LANGUAGE')) { ?>
-						var proddesc = data.desc_trans;
-						var prodlabel = data.label_trans;
-									<?php
-								} else { ?>
-						var proddesc = data.desc;
-						var prodlabel = data.label;
-									<?php
-								} ?>
-						console.log("objectline_create.tpl Load description into text area : "+proddesc);
-								<?php
-								if (getDolGlobalString('PRODUIT_LABEL_IN_FORM')) { ?>
-						jQuery('#product_label').val(prodlabel);  //ajout MM : update the input text on product selection
-								<?php
-							}
-								if (getDolGlobalString('FCKEDITOR_ENABLE_DETAILS')) { ?>
-						if (typeof CKEDITOR == "object" && typeof CKEDITOR.instances != "undefined")
-						{
-							var editor = CKEDITOR.instances['dp_desc'];
-							if (editor) {
-								editor.setData(proddesc);
-							}
-						}
-									<?php
-								} else { ?>
-						jQuery('#dp_desc').text(proddesc);
-									<?php
-								} ?>
-								<?php
-							} ?>
-							<?php
-							if (getDolGlobalString('PRODUCT_LOAD_EXTRAFIELD_INTO_OBJECTLINES')) { ?>
-							jQuery.each(data.array_options, function( key, value ) {
-								jQuery('div[class*="det'+key.replace('options_','_extras_')+'"] > #'+key).val(value);
-							});
-								<?php
-							} ?>
-					},
-					'json'
-				);
-			}
-				<?php
-		}
-
-		if (!empty($usemargins) && $user->hasRight('margins', 'creer')) {
-			$langs->load('stocks'); ?>
-
-			/* Code for margin */
-			$("#fournprice_predef").find("option").remove();
-			$("#fournprice_predef").hide();
-			$("#buying_price").val("").show();
-
-			/* Call post to load content of combo list fournprice_predef */
-			var token = '<?php echo currentToken(); ?>';		// For AJAX Call we use old 'token' and not 'newtoken'
-			$.post('<?php echo DOL_URL_ROOT; ?>/fourn/ajax/getSupplierPrices.php?bestpricefirst=1', { 'idprod': $(this).val(), 'token': token }, function(data) {
-				if (data && data.length > 0)
->>>>>>> Stashed changes
 				{
 					console.log("objectline_create.tpl We are in a price per qty context, we do not call ajax/product, init of fields is done few lines later");
 				} else {
