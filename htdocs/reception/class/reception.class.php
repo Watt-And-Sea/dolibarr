@@ -766,8 +766,8 @@ class Reception extends CommonObject
 			}
 		}
 
-		if (!$error) {
-			// Change status of purchase order to "reception in process" or "totally received"
+		if (!$error && $this->origin_id > 0 ) {
+			// Change status of purchase order to "reception in process" or "totally received" if linked to supplier order
 			$status = $this->getStatusDispatch();
 			if ($status < 0) {
 				$error++;
