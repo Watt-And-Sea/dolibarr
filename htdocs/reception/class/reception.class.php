@@ -339,7 +339,7 @@ class Reception extends CommonObject
 		$sql .= ", fk_incoterms, location_incoterms";
 		$sql .= ") VALUES (";
 		$sql .= "'(PROV)'";
-		$sql .= ", ".((int) $conf->entity);
+		$sql .= ", ".((int) $this->entity);
 		$sql .= ", ".($this->ref_supplier ? "'".$this->db->escape($this->ref_supplier)."'" : "null");
 		$sql .= ", '".$this->db->idate($this->date_creation)."'";
 		$sql .= ", ".((int) $user->id);
@@ -767,8 +767,8 @@ class Reception extends CommonObject
 			}
 		}
 
-		if (!$error && $this->origin_id > 0 ) {
-			// Change status of purchase order to "reception in process" or "totally received" if linked to supplier order
+		if (!$error && $this->origin_id > 0) {
+			// Change status of purchase order to "reception in process" or "totally received"
 			$status = $this->getStatusDispatch();
 			if ($status < 0) {
 				$error++;
