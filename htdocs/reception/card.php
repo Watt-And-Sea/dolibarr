@@ -427,7 +427,7 @@ if (empty($reshook)) {
 				$qty = "qtyl".$i;	// qty
 
 				//reception line for product with no batch management and no multiple stock location
-				if (GETPOST($qty, 'alpha') > 0) {
+				if (GETPOST($qty, 'alpha') != 0) {
 					$totalqty += price2num(GETPOST($qty, 'alpha'), 'MS');
 				}
 
@@ -436,7 +436,7 @@ if (empty($reshook)) {
 			}
 
 
-			if ($totalqty > 0) {  // There is at least one thing to ship
+			if ($totalqty != 0) {  // There is at least one thing to ship
 				for ($i = 1; $i <= $num; $i++) {
 					$idl = "idl".$i;	// id line source
 					$lineToTest = '';
@@ -460,8 +460,8 @@ if (empty($reshook)) {
 
 					//var_dump(GETPOST("productl".$i, 'int').' '.GETPOST('entl'.$i, 'int').' '.GETPOST($idl, 'int').' '.GETPOST($qty, 'int').' '.GETPOST($batch, 'alpha'));
 
-					//if (GETPOST($qty, 'int') > 0 || (GETPOST($qty, 'int') == 0 && getDolGlobalString('RECEPTION_GETS_ALL_ORDER_PRODUCTS')) || (GETPOST($qty, 'int') < 0 && getDolGlobalString('RECEPTION_ALLOW_NEGATIVE_QTY'))) {
-					if (GETPOSTFLOAT($qty) > 0 || (GETPOSTFLOAT($qty) == 0 && getDolGlobalString('RECEPTION_GETS_ALL_ORDER_PRODUCTS'))) {
+					if (GETPOST($qty, 'int') > 0 || (GETPOST($qty, 'int') == 0 && getDolGlobalString('RECEPTION_GETS_ALL_ORDER_PRODUCTS')) || (GETPOST($qty, 'int') < 0 && getDolGlobalString('RECEPTION_ALLOW_NEGATIVE_QTY'))) {
+					//if (GETPOSTFLOAT($qty) > 0 || (GETPOSTFLOAT($qty) == 0 && getDolGlobalString('RECEPTION_GETS_ALL_ORDER_PRODUCTS'))) {
 						$ent = "entl".$i;
 						$idl = "idl".$i;
 
@@ -2488,7 +2488,8 @@ if ($action == 'create' && $permissiontoadd) {
 			$sql .= ', p.description as product_desc';
 			$sql .= " FROM ".MAIN_DB_PREFIX."receptiondet_batch as ed";
 			$sql .= ", ".MAIN_DB_PREFIX."reception as e";
-			$sql .= ", ".MAIN_DB_PREFIX.(($origin == 'supplier_order') ? 'commande_fournisseur' : $origin)."det as obj";
+			//$sql .= ", ".MAIN_DB_PREFIX.(($origin == 'supplier_order') ? 'commande_fournisseur' : $origin)."det as obj";
+			$sql .= ", ".MAIN_DB_PREFIX."commande_fournisseurdet as obj";  // Force moderne
 			$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."product as p ON obj.fk_product = p.rowid";
 			$sql .= " WHERE e.entity IN (".getEntity('reception').")";
 			$sql .= " AND obj.fk_commande = ".((int) $origin_id);
