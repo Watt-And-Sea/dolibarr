@@ -315,6 +315,11 @@ class Reception extends CommonObject
 
 		$this->db->begin();
 
+		// Force date_creation si vide
+		if (empty($this->date_creation)) {
+		    $this->date_creation = dol_now();
+		}
+
 		$sql = "INSERT INTO ".MAIN_DB_PREFIX."reception (";
 		$sql .= "ref";
 		$sql .= ", entity";
@@ -2095,9 +2100,9 @@ class Reception extends CommonObject
 
 						$qty = $obj->qty;
 
-						if ($qty <= 0) {
-							continue;
-						}
+						// if ($qty <= 0) {
+						// 	continue;
+						// }
 
 						dol_syslog(get_class($this)."::valid movement index ".$i." ed.rowid=".$obj->rowid);
 

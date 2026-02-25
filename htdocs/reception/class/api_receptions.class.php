@@ -605,21 +605,21 @@ class Receptions extends DolibarrApi
 	}
 
 
-	// /**
-	//  *  Classify the reception as invoiced
-	//  *
-	//  * @param int   $id           Id of the reception
-	//  *
-	//  * @url     POST {id}/setinvoiced
-	//  *
-	//  * @return int
-	//  *
-	//  * @throws RestException 400
-	//  * @throws RestException 401
-	//  * @throws RestException 404
-	//  * @throws RestException 405
-	//  */
-	/*
+	/**
+	 *  Classify the reception as invoiced
+	 *
+	 * @param int   $id           Id of the reception
+	 *
+	 * @url     POST {id}/setinvoiced
+	 *
+	 * @return int
+	 *
+	 * @throws RestException 400
+	 * @throws RestException 401
+	 * @throws RestException 404
+	 * @throws RestException 405
+	 */
+	
 	public function setinvoiced($id)
 	{
 
@@ -634,13 +634,13 @@ class Receptions extends DolibarrApi
 				throw new RestException(404, 'Reception not found');
 		}
 
-		$result = $this->reception->classifyBilled(DolibarrApiAccess::$user);
+		$result = $this->reception->setBilled(DolibarrApiAccess::$user);
 		if ($result < 0) {
 				throw new RestException(400, $this->reception->error);
 		}
 		return $result;
 	}
-	*/
+	
 
 
 	//  /**
