@@ -1134,7 +1134,11 @@ class Mo extends CommonObject
 		 return -1;
 		 }*/
 
-		$now = dol_now();
+		// $now = dol_now();
+		$date_creation = dol_now();
+		if(!empty($this->date_creation)) {
+			$date_creation = $this->date_creation; 
+		}
 
 		$this->db->begin();
 
@@ -1151,7 +1155,7 @@ class Mo extends CommonObject
 		$sql = "UPDATE ".MAIN_DB_PREFIX.$this->table_element;
 		$sql .= " SET ref = '".$this->db->escape($num)."',";
 		$sql .= " status = ".self::STATUS_VALIDATED.",";
-		$sql .= " date_valid = '".$this->db->idate($now)."',";
+		$sql .= " date_valid = '".$this->db->idate($date_creation)."',";
 		$sql .= " fk_user_valid = ".((int) $user->id);
 		$sql .= " WHERE rowid = ".((int) $this->id);
 

@@ -315,11 +315,6 @@ class Reception extends CommonObject
 
 		$this->db->begin();
 
-		// Force date_creation si vide
-		if (empty($this->date_creation)) {
-		    $this->date_creation = dol_now();
-		}
-
 		$sql = "INSERT INTO ".MAIN_DB_PREFIX."reception (";
 		$sql .= "ref";
 		$sql .= ", entity";
@@ -670,6 +665,9 @@ class Reception extends CommonObject
 		$this->newref = dol_sanitizeFileName($numref);
 
 		$now = dol_now();
+		if(!empty($this->date_creation)) {
+			$now = $this->date_creation; 
+		}
 
 		// Validate
 		$sql = "UPDATE ".MAIN_DB_PREFIX."reception SET";
