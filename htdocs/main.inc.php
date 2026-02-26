@@ -18,6 +18,7 @@
  * Copyright (C) 2023       Joachim Küter      		<git-jk@bloxera.com>
  * Copyright (C) 2023       Eric Seigne      		<eric.seigne@cap-rel.fr>
  * Copyright (C) 2024-2025	MDW							<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2026		William Mead			<william@m34d.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,6 +76,8 @@ require_once 'filefunc.inc.php';
 /**
  * @var ?string $php_session_save_handler
  * @var ?string $dolibarr_main_force_https
+ * @var ?string $dolibarr_main_restrict_ip
+ * @var ?string $dolibarr_nocsrfcheck
  */
 
 // If there is a POST parameter to tell to save automatically some POST parameters into cookies, we do it.
@@ -265,15 +268,21 @@ if (!empty($conf->file->main_force_https) && !isHTTPS() && !defined('NOHTTPSREDI
 if (!defined('NOLOGIN') && !defined('NOIPCHECK') && !empty($dolibarr_main_restrict_ip)) {
 	$listofip = explode(',', $dolibarr_main_restrict_ip);
 	$found = false;
+	$user_ip = $_SERVER['REMOTE_ADDR'];
 	foreach ($listofip as $ip) {
-		$ip = trim($ip);
-		if ($ip == $_SERVER['REMOTE_ADDR']) {
+		$authorized_ip = trim($ip);
+		if (strpos($authorized_ip, '/')) { // Check if IP with CIDR notation
+			if (checkIPInCidr($user_ip, $authorized_ip) > 0) {
+				$found = true;
+				break;
+			}
+		} elseif ($user_ip == $authorized_ip) {
 			$found = true;
 			break;
 		}
 	}
 	if (!$found) {
-		print 'Access refused by IP protection. Your detected IP is '.$_SERVER['REMOTE_ADDR'];
+		print 'Access refused by IP protection. Your detected IP is: '.dol_escape_htmltag($user_ip);
 		exit;
 	}
 }
@@ -350,7 +359,7 @@ if ((!defined('NOCSRFCHECK') && empty($dolibarr_nocsrfcheck) && getDolGlobalInt(
 	if ((GETPOSTISSET('massaction') || $tmpaction) && getDolGlobalInt('MAIN_SECURITY_CSRF_WITH_TOKEN') >= 3) {
 		// All GET actions (except the listed exceptions that are usually post for pre-actions and not real action) and mass actions are processed as sensitive.
 		// We exclude some action that are not sensitive so legitimate
-		if (GETPOSTISSET('massaction') || (strpos($tmpaction, 'display') !== 0 && !in_array($tmpaction, array('create', 'create2', 'createsite', 'createcard', 'edit', 'editcontract', 'editvalidator', 'file_manager', 'presend', 'presend_addmessage', 'preview', 'reconcile', 'specimen')))) {
+		if (GETPOSTISSET('massaction') || (strpos($tmpaction, 'display') !== 0 && !in_array($tmpaction, array('create', 'create2', 'createsite', 'createcard', 'edit', 'editcontract', 'editvalidator', 'file_manager', 'presend', 'presend_addmessage', 'preview', 'reconcile', 'specimen', 'validatenewpassword')))) {
 			$sensitiveget = true;
 		}
 	} elseif (getDolGlobalInt('MAIN_SECURITY_CSRF_WITH_TOKEN') >= 2) {
@@ -1094,6 +1103,24 @@ if (!defined('NOLOGIN')) {
 		}
 	}
 
+	// Check if user must change password at next login
+	if (!empty($user->force_pass_change) && $dol_authmode == 'dolibarr') {
+		// redirect to a simple page with only one action is possible : change your password
+		$allowedpages = array('/user/changepassword.php', '/user/logout.php');
+		$currentpage = $_SERVER['PHP_SELF'];
+		$isallowed = false;
+		foreach ($allowedpages as $page) {
+			if (preg_match('/'.preg_quote($page, '/').'$/', $currentpage)) {
+				$isallowed = true;
+				break;
+			}
+		}
+		if (!$isallowed) {
+			header('Location: '.DOL_URL_ROOT.'/user/changepassword.php');
+			exit;
+		}
+	}
+
 	// If user admin, we force the rights-based modules
 	if ($user->admin) {
 		$user->rights->user->user->lire = 1;
@@ -1536,11 +1563,14 @@ function top_httphead($contenttype = 'text/html', $forcenocache = 0)
 			$contentsecuritypolicy .= $hookmanager->resPrint; // Concat CSP
 		}
 
+		// Add Dolibarr to Content-Security-Policy
+		$contentsecuritypolicy = preg_replace('/default-src \'self\'/', 'default-src \'self\' *.dolibarr.org', $contentsecuritypolicy);
+
 		if (!empty($contentsecuritypolicy)) {
 			header("Content-Security-Policy-Report-Only: ".$contentsecuritypolicy);
 		}
 	} else {
-		header("Content-Security-Policy: ".constant('MAIN_SECURITY_FORCECSPRO'));
+		header("Content-Security-Policy-Report-Only: ".constant('MAIN_SECURITY_FORCECSPRO'));
 	}
 
 	// Content-Security-Policy
@@ -1572,6 +1602,9 @@ function top_httphead($contenttype = 'text/html', $forcenocache = 0)
 		} else {
 			$contentsecuritypolicy .= $hookmanager->resPrint; // Concat CSP
 		}
+
+		// Add Dolibarr to Content-Security-Policy
+		$contentsecuritypolicy = preg_replace('/default-src \'self\'/', 'default-src \'self\' ping.dolibarr.org', $contentsecuritypolicy);
 
 		if (!empty($contentsecuritypolicy)) {
 			header("Content-Security-Policy: ".$contentsecuritypolicy);
@@ -1796,15 +1829,15 @@ function top_htmlhead($head, $title = '', $disablejs = 0, $disablehead = 0, $arr
 				if (constant('JS_JQUERY_UI')) {
 					print '<link rel="stylesheet" type="text/css" href="' . JS_JQUERY_UI . 'css/' . $jquerytheme . '/jquery-ui.min.css?' . $ext . '">' . "\n"; // Forced JQuery
 				} else {
-					print '<link rel="stylesheet" type="text/css" href="' . DOL_URL_ROOT . '/includes/jquery/css/' . $jquerytheme . '/jquery-ui.css?' . $ext . '">' . "\n"; // JQuery
+					print '<link rel="stylesheet" type="text/css" href="' . DOL_URL_ROOT . '/public/includes/jquery/css/' . $jquerytheme . '/jquery-ui.css?' . $ext . '">' . "\n"; // JQuery
 				}
 			}
 			if (!defined('DISABLE_JQUERY_JNOTIFY')) {
-				print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/jnotify/jquery.jnotify-alt.min.css?' . $ext . '">'."\n"; // JNotify
+				print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/jnotify/jquery.jnotify-alt.min.css?' . $ext . '">'."\n"; // JNotify
 			}
 			if (!defined('DISABLE_SELECT2') && (getDolGlobalString('MAIN_USE_JQUERY_MULTISELECT') || defined('REQUIRE_JQUERY_MULTISELECT'))) {     // jQuery plugin "mutiselect", "multiple-select", "select2"...
 				$tmpplugin = !getDolGlobalString('MAIN_USE_JQUERY_MULTISELECT') ? constant('REQUIRE_JQUERY_MULTISELECT') : getDolGlobalString('MAIN_USE_JQUERY_MULTISELECT');
-				print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/includes/jquery/plugins/'.$tmpplugin.'/dist/css/'.$tmpplugin.'.css?' . $ext . '">'."\n";
+				print '<link rel="stylesheet" type="text/css" href="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/'.$tmpplugin.'/dist/css/'.$tmpplugin.'.css?' . $ext . '">'."\n";
 			}
 		}
 
@@ -1899,22 +1932,22 @@ function top_htmlhead($head, $title = '', $disablejs = 0, $disablehead = 0, $arr
 			if (defined('JS_JQUERY') && constant('JS_JQUERY')) {
 				print '<script nonce="'.getNonce().'" src="'.JS_JQUERY.'jquery.min.js?' . $ext . '"></script>'."\n";
 			} else {
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/js/jquery.min.js?' . $ext . '"></script>'."\n";
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/js/jquery.min.js?' . $ext . '"></script>'."\n";
 			}
 			if (!defined('DISABLE_JQUERY_UI')) {
 				if (defined('JS_JQUERY_UI') && constant('JS_JQUERY_UI')) {
 					print '<script nonce="' . getNonce() . '" src="' . JS_JQUERY_UI . 'jquery-ui.min.js?' . $ext . '"></script>' . "\n";
 				} else {
-					print '<script nonce="' . getNonce() . '" src="' . DOL_URL_ROOT . '/includes/jquery/js/jquery-ui.min.js?' . $ext . '"></script>' . "\n";
+					print '<script nonce="' . getNonce() . '" src="' . DOL_URL_ROOT . '/public/includes/jquery/js/jquery-ui.min.js?' . $ext . '"></script>' . "\n";
 				}
 			}
 			// jQuery jnotify
 			if (!getDolGlobalString('MAIN_DISABLE_JQUERY_JNOTIFY') && !defined('DISABLE_JQUERY_JNOTIFY')) {
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/jnotify/jquery.jnotify.min.js?' . $ext . '"></script>'."\n";
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/jnotify/jquery.jnotify.min.js?' . $ext . '"></script>'."\n";
 			}
 			// Table drag and drop lines
 			if (empty($disableforlogin) && !defined('DISABLE_JQUERY_TABLEDND')) {
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/tablednd/jquery.tablednd.min.js?' . $ext . '"></script>'."\n";
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/tablednd/jquery.tablednd.min.js?' . $ext . '"></script>'."\n";
 			}
 			// Chart
 			if (empty($disableforlogin) && (!getDolGlobalString('MAIN_JS_GRAPH') || getDolGlobalString('MAIN_JS_GRAPH') == 'chart') && !defined('DISABLE_JS_GRAPH')) {
@@ -1924,9 +1957,9 @@ function top_htmlhead($head, $title = '', $disablejs = 0, $disablehead = 0, $arr
 			// jQuery jeditable for Edit In Place features
 			if (getDolGlobalString('MAIN_USE_JQUERY_JEDITABLE') && !defined('DISABLE_JQUERY_JEDITABLE')) {
 				print '<!-- JS to manage editInPlace feature -->'."\n";
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/jeditable/jquery.jeditable.js?' . $ext . '"></script>'."\n";
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/jeditable/jquery.jeditable.ui-datepicker.js?' . $ext . '"></script>'."\n";
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/jeditable/jquery.jeditable.ui-autocomplete.js?' . $ext . '"></script>'."\n";
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/jeditable/jquery.jeditable.js?' . $ext . '"></script>'."\n";
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/jeditable/jquery.jeditable.ui-datepicker.js?' . $ext . '"></script>'."\n";
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/jeditable/jquery.jeditable.ui-autocomplete.js?' . $ext . '"></script>'."\n";
 				print '<script nonce="'.getNonce().'" >'."\n";
 				print 'var urlSaveInPlace = \''.DOL_URL_ROOT.'/core/ajax/saveinplace.php\';'."\n";
 				print 'var urlLoadInPlace = \''.DOL_URL_ROOT.'/core/ajax/loadinplace.php\';'."\n";
@@ -1938,15 +1971,15 @@ function top_htmlhead($head, $title = '', $disablejs = 0, $disablehead = 0, $arr
 				print 'var withInPlace = 300;'; // width in pixel for default string edit
 				print '</script>'."\n";
 				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/core/js/editinplace.js?' . $ext . '"></script>'."\n";
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/jeditable/jquery.jeditable.ckeditor.js?' . $ext . '"></script>'."\n";
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/jeditable/jquery.jeditable.ckeditor.js?' . $ext . '"></script>'."\n";
 			}
 			if (!defined('DISABLE_SELECT2') && (getDolGlobalString('MAIN_USE_JQUERY_MULTISELECT') || defined('REQUIRE_JQUERY_MULTISELECT'))) {
 				// jQuery plugin "mutiselect", "multiple-select", "select2", ...
 				$tmpplugin = !getDolGlobalString('MAIN_USE_JQUERY_MULTISELECT') ? constant('REQUIRE_JQUERY_MULTISELECT') : getDolGlobalString('MAIN_USE_JQUERY_MULTISELECT');
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/'.$tmpplugin.'/dist/js/'.$tmpplugin.'.full.min.js?' . $ext . '"></script>'."\n"; // We include full because we need the support of containerCssClass
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/'.$tmpplugin.'/dist/js/'.$tmpplugin.'.full.min.js?' . $ext . '"></script>'."\n"; // We include full because we need the support of containerCssClass
 			}
 			if (!defined('DISABLE_MULTISELECT')) {     // jQuery plugin "mutiselect" to select with checkboxes. Can be removed once we have an enhanced search tool
-				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/includes/jquery/plugins/multiselect/jquery.multi-select.js?' . $ext . '"></script>'."\n";
+				print '<script nonce="'.getNonce().'" src="'.DOL_URL_ROOT.'/public/includes/jquery/plugins/multiselect/jquery.multi-select.js?' . $ext . '"></script>'."\n";
 			}
 		}
 
@@ -1954,7 +1987,7 @@ function top_htmlhead($head, $title = '', $disablejs = 0, $disablehead = 0, $arr
 			// CKEditor
 			if (empty($disableforlogin) && (isModEnabled('fckeditor') && (!getDolGlobalString('FCKEDITOR_EDITORNAME') || getDolGlobalString('FCKEDITOR_EDITORNAME') == 'ckeditor') && !defined('DISABLE_CKEDITOR')) || defined('FORCE_CKEDITOR')) {
 				print '<!-- Includes JS for CKEditor -->'."\n";
-				$pathckeditor = DOL_URL_ROOT.'/includes/ckeditor/ckeditor/';
+				$pathckeditor = DOL_URL_ROOT.'/public/includes/ckeditor/ckeditor/';
 				$jsckeditor = 'ckeditor.js';
 				if (constant('JS_CKEDITOR')) {
 					// To use external ckeditor 4 js lib
@@ -2370,8 +2403,9 @@ function top_menu_user($hideloginname = 0, $urllogout = '')
 			$nophoto = '/public/theme/common/user_woman.png';
 		}
 
-		$userImage = '<img class="photo photouserphoto userphoto" alt="" src="'.DOL_URL_ROOT.$nophoto.'" aria-hidden="true">';
-		$userDropDownImage = '<img class="photo dropdown-user-image" alt="" src="'.DOL_URL_ROOT.$nophoto.'">';
+		$userImage = img_picto('', 'user', 'class="photo photouserphoto userphoto"');
+		//$userImage = '<img class="photo photouserphoto userphoto" alt="" src="'.DOL_URL_ROOT.$nophoto.'" aria-hidden="true">';
+		$userDropDownImage = '<img class="photo dropdown-user-image" alt="" src="'.DOL_URL_ROOT.$nophoto.'" aria-hidden="true">';
 	}
 
 	$dropdownBody = '';
@@ -2404,7 +2438,8 @@ function top_menu_user($hideloginname = 0, $urllogout = '')
 		}
 	}
 	$dropdownBody .= '<br><b>'.$langs->trans("VATIntraShort").'</b>: <span>'.dol_print_profids(getDolGlobalString("MAIN_INFO_TVAINTRA"), 'VAT').'</span>';
-	$dropdownBody .= '<br><b>'.$langs->trans("Country").'</b>: <span>'.($mysoc->country_code ? $langs->trans("Country".$mysoc->country_code) : '').'</span>';
+	$langFlag = picto_from_langcode($langs->getDefaultLang(), 'class="none"');
+	$dropdownBody .= '<br><b>'.$langs->trans("Country").'</b>: <span>'.($mysoc->country_code ? $langs->trans("Country".$mysoc->country_code).' '.$langFlag : '').'</span>';
 	if (isModEnabled('multicurrency')) {
 		$dropdownBody .= '<br><b>'.$langs->trans("Currency").'</b>: <span>'.getDolCurrency().'</span>';
 	}
@@ -2416,7 +2451,7 @@ function top_menu_user($hideloginname = 0, $urllogout = '')
 
 	// login infos
 	if (!empty($user->admin)) {
-		$dropdownBody .= '<br><b>'.$langs->trans("Administrator").'</b>: '.yn($user->admin);
+		$dropdownBody .= '<br><b>'.$langs->trans("Administrator").'</b>: '.yn($user->admin).' '.img_picto('', 'admin');
 	}
 	$company = '';
 	if (!empty($user->socid)) {	// Add third party for external users
@@ -2441,8 +2476,8 @@ function top_menu_user($hideloginname = 0, $urllogout = '')
 	$dropdownBody .= '<br><b>'.$langs->trans("CurrentTheme").':</b> '.$conf->theme;
 	// @phan-suppress-next-line PhanRedefinedClassReference
 	$dropdownBody .= '<br><b>'.$langs->trans("CurrentMenuManager").':</b> '.(isset($menumanager) ? $menumanager->name : 'unknown');
-	$langFlag = picto_from_langcode($langs->getDefaultLang());
-	$dropdownBody .= '<br><b>'.$langs->trans("CurrentUserLanguage").':</b> '.($langFlag ? $langFlag.' ' : '').$langs->getDefaultLang();
+	$langFlag = picto_from_langcode($langs->getDefaultLang(), 'class="none"');
+	$dropdownBody .= '<br><b>'.$langs->trans("CurrentUserLanguage").':</b> '.$langs->getDefaultLang().($langFlag ? ' '.$langFlag : '');;
 
 	$tz = (int) $_SESSION['dol_tz'] + (int) $_SESSION['dol_dst'];
 	$dropdownBody .= '<br><b>'.$langs->trans("ClientTZ").':</b> '.($tz ? ($tz >= 0 ? '+' : '').$tz : '');
@@ -2453,11 +2488,8 @@ function top_menu_user($hideloginname = 0, $urllogout = '')
 
 	$dropdownBody .= '<br><b>'.$langs->trans("Browser").':</b> '.ucfirst($conf->browser->name).($conf->browser->version ? ' '.$conf->browser->version : '');
 	$dropdownBody .= $form->textwithpicto('', dol_escape_htmltag($_SERVER['HTTP_USER_AGENT']), 1, 'help', 'valignmiddle', 0, 3, 'useragent');
-	$dropdownBody .= '<br><b>'.$langs->trans("Layout").':</b> '.$conf->browser->layout;
 	$dropdownBody .= '<br><b>'.$langs->trans("Screen").':</b> '.$_SESSION['dol_screenwidth'].' x '.$_SESSION['dol_screenheight'];
-	if ($conf->browser->layout == 'phone') {
-		$dropdownBody .= '<br><b>'.$langs->trans("Phone").':</b> '.$langs->trans("Yes");
-	}
+	$dropdownBody .= ' <span class="opacitymedium">('.$conf->browser->layout.')</span>';
 	if (!empty($_SESSION["disablemodules"])) {
 		$dropdownBody .= '<br><b>'.$langs->trans("DisabledModules").':</b> <br>'.implode(', ', explode(',', $_SESSION["disablemodules"]));
 	}
@@ -2487,7 +2519,7 @@ function top_menu_user($hideloginname = 0, $urllogout = '')
 
 	$profilName = $user->getFullName($langs).' ('.$user->login.')';
 	if (!empty($user->admin)) {
-		$profilName = '<i class="far fa-star classfortooltip" title="'.$langs->trans("Administrator").'" ></i> '.$profilName;
+		$profilName = img_picto($langs->trans("Administrator"), 'admin').' '.$profilName;
 	}
 
 	// Define version to show
@@ -3253,120 +3285,122 @@ function left_menu($menu_array_before, $helppagename = '', $notused = '', $menu_
 		}
 
 		// Dolibarr version + help + bug report link
-		print "\n";
-		print "<!-- Begin Help Block-->\n";
-		print '<div id="blockvmenuhelp" class="blockvmenuhelp">'."\n";
+		if (getDolGlobalString('MAIN_SHOW_VERSION') || getDolGlobalString('MAIN_BUGTRACK_ENABLELINK')) {
+			print "\n";
+			print "<!-- Begin Help Block-->\n";
+			print '<div id="blockvmenuhelp" class="blockvmenuhelp">'."\n";
 
-		// Version
-		if (getDolGlobalString('MAIN_SHOW_VERSION')) {    // Version is already on help picto and on login page.
-			$doliurl = 'https://www.dolibarr.org';
-			//local communities
-			if (preg_match('/fr/i', $langs->defaultlang)) {
-				$doliurl = 'https://www.dolibarr.fr';
-			}
-			if (preg_match('/es/i', $langs->defaultlang)) {
-				$doliurl = 'https://www.dolibarr.es';
-			}
-			if (preg_match('/de/i', $langs->defaultlang)) {
-				$doliurl = 'https://www.dolibarr.de';
-			}
-			if (preg_match('/it/i', $langs->defaultlang)) {
-				$doliurl = 'https://www.dolibarr.it';
-			}
-			if (preg_match('/gr/i', $langs->defaultlang)) {
-				$doliurl = 'https://www.dolibarr.gr';
+			// Version
+			if (getDolGlobalString('MAIN_SHOW_VERSION')) {    // Version is already on help picto and on login page.
+				$doliurl = 'https://www.dolibarr.org';
+				//local communities
+				if (preg_match('/fr/i', $langs->defaultlang)) {
+					$doliurl = 'https://www.dolibarr.fr';
+				}
+				if (preg_match('/es/i', $langs->defaultlang)) {
+					$doliurl = 'https://www.dolibarr.es';
+				}
+				if (preg_match('/de/i', $langs->defaultlang)) {
+					$doliurl = 'https://www.dolibarr.de';
+				}
+				if (preg_match('/it/i', $langs->defaultlang)) {
+					$doliurl = 'https://www.dolibarr.it';
+				}
+				if (preg_match('/gr/i', $langs->defaultlang)) {
+					$doliurl = 'https://www.dolibarr.gr';
+				}
+
+				$appli = constant('DOL_APPLICATION_TITLE');
+				$applicustom = getDolGlobalString('MAIN_APPLICATION_TITLE');
+				if ($applicustom) {
+					$appli = (preg_match('/^\+/', $applicustom) ? $appli : '').$applicustom;
+				} else {
+					$appli .= " ".DOL_VERSION;
+				}
+
+				// Clean doliurl if we use a custom application name
+				if ($applicustom) {
+					$doliurl = '';
+				}
+
+				print '<div id="blockvmenuhelpapp" class="blockvmenuhelp">';
+				if ($doliurl) {
+					print '<a class="help" target="_blank" rel="noopener noreferrer" href="'.$doliurl.'">';
+				} else {
+					print '<span class="help">';
+				}
+				print $appli;
+				if ($doliurl) {
+					print '</a>';
+				} else {
+					print '</span>';
+				}
+				print '</div>'."\n";
 			}
 
-			$appli = constant('DOL_APPLICATION_TITLE');
-			$applicustom = getDolGlobalString('MAIN_APPLICATION_TITLE');
-			if ($applicustom) {
-				$appli = (preg_match('/^\+/', $applicustom) ? $appli : '').$applicustom;
-			} else {
-				$appli .= " ".DOL_VERSION;
+			// Link to bugtrack
+			if (getDolGlobalString('MAIN_BUGTRACK_ENABLELINK')) {
+				require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
+
+				if (getDolGlobalString('MAIN_BUGTRACK_ENABLELINK') == 'github') {
+					$bugbaseurl = 'https://github.com/Dolibarr/dolibarr/issues/new?labels=Bug';
+					$bugbaseurl .= '&title=';
+					$bugbaseurl .= urlencode("Bug: ");
+					$bugbaseurl .= '&body=';
+					$bugbaseurl .= urlencode("# Instructions\n");
+					$bugbaseurl .= urlencode("*This is a template to help you report good issues. You may use [Github Markdown](https://help.github.com/articles/getting-started-with-writing-and-formatting-on-github/) syntax to format your issue report.*\n");
+					$bugbaseurl .= urlencode("*Please:*\n");
+					$bugbaseurl .= urlencode("- *replace the bracket enclosed texts with meaningful information*\n");
+					$bugbaseurl .= urlencode("- *remove any unused sub-section*\n");
+					$bugbaseurl .= urlencode("\n");
+					$bugbaseurl .= urlencode("\n");
+					$bugbaseurl .= urlencode("# Bug\n");
+					$bugbaseurl .= urlencode("[*Short description*]\n");
+					$bugbaseurl .= urlencode("\n");
+					$bugbaseurl .= urlencode("## Environment\n");
+					$bugbaseurl .= urlencode("- **Version**: ".DOL_VERSION."\n");
+					$bugbaseurl .= urlencode("- **OS**: ".php_uname('s')."\n");
+					$bugbaseurl .= urlencode("- **Web server**: ".$_SERVER["SERVER_SOFTWARE"]."\n");
+					$bugbaseurl .= urlencode("- **PHP**: ".php_sapi_name().' '.phpversion()."\n");
+					$bugbaseurl .= urlencode("- **Database**: ".$db::LABEL.' '.$db->getVersion()."\n");
+					$bugbaseurl .= urlencode("- **URL(s)**: ".$_SERVER["REQUEST_URI"]."\n");
+					$bugbaseurl .= urlencode("\n");
+					$bugbaseurl .= urlencode("## Expected and actual behavior\n");
+					$bugbaseurl .= urlencode("[*Verbose description*]\n");
+					$bugbaseurl .= urlencode("\n");
+					$bugbaseurl .= urlencode("## Steps to reproduce the behavior\n");
+					$bugbaseurl .= urlencode("[*Verbose description*]\n");
+					$bugbaseurl .= urlencode("\n");
+					$bugbaseurl .= urlencode("## [Attached files](https://help.github.com/articles/issue-attachments) (Screenshots, screencasts, dolibarr.log, debugging information…)\n");
+					$bugbaseurl .= urlencode("[*Files*]\n");
+					$bugbaseurl .= urlencode("\n");
+
+					$bugbaseurl .= urlencode("\n");
+					$bugbaseurl .= urlencode("## Report\n");
+				} elseif (getDolGlobalString('MAIN_BUGTRACK_ENABLELINK')) {
+					$bugbaseurl = getDolGlobalString('MAIN_BUGTRACK_ENABLELINK');
+				} else {
+					$bugbaseurl = "";
+				}
+
+				// Execute hook printBugtrackInfo
+				$parameters = array('bugbaseurl' => $bugbaseurl);
+				$reshook = $hookmanager->executeHooks('printBugtrackInfo', $parameters); // Note that $action and $object may have been modified by some hooks
+				if (empty($reshook)) {
+					$bugbaseurl .= $hookmanager->resPrint;
+				} else {
+					$bugbaseurl = $hookmanager->resPrint;
+				}
+
+				print '<div id="blockvmenuhelpbugreport" class="blockvmenuhelp">';
+				print '<a class="help" target="_blank" rel="noopener noreferrer" href="'.$bugbaseurl.'"><i class="fas fa-bug"></i> '.$langs->trans("FindBug").'</a>';
+				print '</div>';
 			}
 
-			// Clean doliurl if we use a custom application name
-			if ($applicustom) {
-				$doliurl = '';
-			}
-
-			print '<div id="blockvmenuhelpapp" class="blockvmenuhelp">';
-			if ($doliurl) {
-				print '<a class="help" target="_blank" rel="noopener noreferrer" href="'.$doliurl.'">';
-			} else {
-				print '<span class="help">';
-			}
-			print $appli;
-			if ($doliurl) {
-				print '</a>';
-			} else {
-				print '</span>';
-			}
-			print '</div>'."\n";
+			print "</div>\n";
+			print "<!-- End Help Block-->\n";
+			print "\n";
 		}
-
-		// Link to bugtrack
-		if (getDolGlobalString('MAIN_BUGTRACK_ENABLELINK')) {
-			require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
-
-			if (getDolGlobalString('MAIN_BUGTRACK_ENABLELINK') == 'github') {
-				$bugbaseurl = 'https://github.com/Dolibarr/dolibarr/issues/new?labels=Bug';
-				$bugbaseurl .= '&title=';
-				$bugbaseurl .= urlencode("Bug: ");
-				$bugbaseurl .= '&body=';
-				$bugbaseurl .= urlencode("# Instructions\n");
-				$bugbaseurl .= urlencode("*This is a template to help you report good issues. You may use [Github Markdown](https://help.github.com/articles/getting-started-with-writing-and-formatting-on-github/) syntax to format your issue report.*\n");
-				$bugbaseurl .= urlencode("*Please:*\n");
-				$bugbaseurl .= urlencode("- *replace the bracket enclosed texts with meaningful information*\n");
-				$bugbaseurl .= urlencode("- *remove any unused sub-section*\n");
-				$bugbaseurl .= urlencode("\n");
-				$bugbaseurl .= urlencode("\n");
-				$bugbaseurl .= urlencode("# Bug\n");
-				$bugbaseurl .= urlencode("[*Short description*]\n");
-				$bugbaseurl .= urlencode("\n");
-				$bugbaseurl .= urlencode("## Environment\n");
-				$bugbaseurl .= urlencode("- **Version**: ".DOL_VERSION."\n");
-				$bugbaseurl .= urlencode("- **OS**: ".php_uname('s')."\n");
-				$bugbaseurl .= urlencode("- **Web server**: ".$_SERVER["SERVER_SOFTWARE"]."\n");
-				$bugbaseurl .= urlencode("- **PHP**: ".php_sapi_name().' '.phpversion()."\n");
-				$bugbaseurl .= urlencode("- **Database**: ".$db::LABEL.' '.$db->getVersion()."\n");
-				$bugbaseurl .= urlencode("- **URL(s)**: ".$_SERVER["REQUEST_URI"]."\n");
-				$bugbaseurl .= urlencode("\n");
-				$bugbaseurl .= urlencode("## Expected and actual behavior\n");
-				$bugbaseurl .= urlencode("[*Verbose description*]\n");
-				$bugbaseurl .= urlencode("\n");
-				$bugbaseurl .= urlencode("## Steps to reproduce the behavior\n");
-				$bugbaseurl .= urlencode("[*Verbose description*]\n");
-				$bugbaseurl .= urlencode("\n");
-				$bugbaseurl .= urlencode("## [Attached files](https://help.github.com/articles/issue-attachments) (Screenshots, screencasts, dolibarr.log, debugging information…)\n");
-				$bugbaseurl .= urlencode("[*Files*]\n");
-				$bugbaseurl .= urlencode("\n");
-
-				$bugbaseurl .= urlencode("\n");
-				$bugbaseurl .= urlencode("## Report\n");
-			} elseif (getDolGlobalString('MAIN_BUGTRACK_ENABLELINK')) {
-				$bugbaseurl = getDolGlobalString('MAIN_BUGTRACK_ENABLELINK');
-			} else {
-				$bugbaseurl = "";
-			}
-
-			// Execute hook printBugtrackInfo
-			$parameters = array('bugbaseurl' => $bugbaseurl);
-			$reshook = $hookmanager->executeHooks('printBugtrackInfo', $parameters); // Note that $action and $object may have been modified by some hooks
-			if (empty($reshook)) {
-				$bugbaseurl .= $hookmanager->resPrint;
-			} else {
-				$bugbaseurl = $hookmanager->resPrint;
-			}
-
-			print '<div id="blockvmenuhelpbugreport" class="blockvmenuhelp">';
-			print '<a class="help" target="_blank" rel="noopener noreferrer" href="'.$bugbaseurl.'"><i class="fas fa-bug"></i> '.$langs->trans("FindBug").'</a>';
-			print '</div>';
-		}
-
-		print "</div>\n";
-		print "<!-- End Help Block-->\n";
-		print "\n";
 
 		print "</div>\n";
 		print "<!-- End left menu -->\n";
@@ -3536,7 +3570,7 @@ function printSearchForm($urlaction, $urlobject, $title, $htmlmorecss, $htmlinpu
 	$ret .= ' placeholder="'.strip_tags($title).'"';
 	$ret .= ($autofocus ? ' autofocus' : '');
 	$ret .= ' name="'.$htmlinputname.'" id="'.$prefhtmlinputname.$htmlinputname.'" />';
-	$ret .= '<button type="submit" class="button bordertransp" style="padding-top: 4px; padding-bottom: 4px; padding-left: 6px; padding-right: 6px">';
+	$ret .= '<button type="submit" class="button bordertransp nohover" style="padding-top: 4px; padding-bottom: 4px; padding-left: 6px; padding-right: 6px">';
 	$ret .= '<span class="fa fa-search"></span>';
 	$ret .= '</button>';
 	$ret .= '</div>';
@@ -3731,23 +3765,30 @@ if (!function_exists("llxFooter")) {
 		$forceping = GETPOSTINT('forceping');
 
 		if (($_SERVER["PHP_SELF"] == DOL_URL_ROOT.'/index.php') || $forceping) {
-			$hash_unique_id = dol_hash('dolibarr'.$conf->file->instance_unique_id, 'sha256');	// Note: if the global salt changes, this hash changes too so ping may be counted twice. We don't mind. It is for statistics purpose only.
+			require_once DOL_DOCUMENT_ROOT.'/blockedlog/lib/blockedlog.lib.php';
+
+			$hash_unique_id_ping = getHashUniqueIdOfRegistration('sha256');
 			$constanttosavelastko = 'MAIN_LAST_PING_KO_DATE';
 			$constanttosavefirstok = 'MAIN_FIRST_PING_OK_DATE';
 			$constanttosavefirstokid = 'MAIN_FIRST_PING_OK_ID';
 
 			if (!getDolGlobalString($constanttosavefirstok)
-				|| (!empty($conf->file->instance_unique_id) && (($hash_unique_id.' - '.DOL_VERSION) != getDolGlobalString($constanttosavefirstokid)) && (getDolGlobalString($constanttosavefirstokid) != 'disabled'))
+				|| (!empty($conf->file->instance_unique_id) && (($hash_unique_id_ping.' - '.DOL_VERSION) != getDolGlobalString($constanttosavefirstokid)) && (getDolGlobalString($constanttosavefirstokid) != 'disabled'))
 			|| $forceping) {
 				// No ping done if we are into an alpha version
 				if (strpos('alpha', DOL_VERSION) > 0 && !$forceping) {
 					print "\n<!-- NO JS CODE TO ENABLE the anonymous Ping. It is an alpha version -->\n";
-				} elseif (empty($_COOKIE['DOLINSTALLNOPING_'.$hash_unique_id]) || $forceping) {	// Cookie is set when we uncheck the checkbox in the installation wizard.
+				} elseif (empty($_COOKIE['DOLINSTALLNOPING_'.$hash_unique_id_ping]) || $forceping) {	// Cookie is set when we uncheck the checkbox in the installation wizard.
 					// Output code for ping
 					include_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
 
-					$arrayofdata = array('action' => 'dolibarrping', 'country_code' => ($mysoc->country_code ? $mysoc->country_code : 'unknown'));
-					printCodeForPing($constanttosavelastko, $constanttosavefirstok, $arrayofdata, $forceping);
+					$arrayofmoredata = array(
+						'action' => 'dolibarrping',
+						'datesys' => dol_print_date(dol_now(), 'standard', 'gmt'),
+
+						'country_code' => ($mysoc->country_code ? $mysoc->country_code : 'unknown')
+					);
+					printCodeForPing($constanttosavelastko, $constanttosavefirstok, $arrayofmoredata, $forceping);
 				} else {
 					$now = dol_now();
 					print "\n<!-- NO JS CODE TO ENABLE the anonymous Ping. It was disabled -->\n";
@@ -3760,33 +3801,36 @@ if (!function_exists("llxFooter")) {
 			}
 		}
 
-		// Add code to force the registration if not yet done but ready (in case past submission failed)
-		// You can use &forceregistration=1 in parameters to force the call if the call was already sent.
+		// Add code for the asynchronous registration of the use of the BlockedLog module if not yet done but ready (in case past submission failed)
+		// You can use &forceregistration=1 in parameters to force also the recall if the call was already sent.
 		$forceregistration = GETPOSTINT('forceregistration');
+
 		if (isModEnabled('blockedlog') && (($_SERVER["PHP_SELF"] == DOL_URL_ROOT.'/index.php') || $forceregistration)) {
-			include_once DOL_DOCUMENT_ROOT.'/blockedlog/lib/blockedlog.lib.php';
+			require_once DOL_DOCUMENT_ROOT.'/blockedlog/lib/blockedlog.lib.php';
+
 			if (!isALNEQualifiedVersion()) {
 				print "\n<!-- NO JS CODE TO ENABLE the registration. Not a LNE qualified version -->\n";
-			} elseif (!isRegistrationRecorded()) {
+			} elseif (!isRegistrationDataSaved()) {
 				print "\n<!-- NO JS CODE TO ENABLE the registration. Registration data not saved -->\n";
 			} else {
-				$hash_unique_id = dol_hash('dolibarr'.$conf->file->instance_unique_id, 'sha256');	// Note: if the global salt changes, this hash changes too so ping may be counted twice. We don't mind. It is for statistics purpose only.
+				$hash_unique_id_registration = getHashUniqueIdOfRegistration();
 				$constanttosavelastko = 'MAIN_LAST_REGISTRATION_KO_DATE';
 				$constanttosavefirstok = 'MAIN_FIRST_REGISTRATION_OK_DATE';
 				$constanttosavefirstokid = 'MAIN_FIRST_REGISTRATION_OK_ID';
 
 				if (!getDolGlobalString($constanttosavefirstok)
-					|| (!empty($conf->file->instance_unique_id) && ($hash_unique_id.' - '.DOL_VERSION != getDolGlobalString($constanttosavefirstokid)) && (getDolGlobalString($constanttosavefirstokid) != 'disabled'))
+					|| (!empty($conf->file->instance_unique_id) && ($hash_unique_id_registration.' - '.DOL_VERSION != getDolGlobalString($constanttosavefirstokid)) && (getDolGlobalString($constanttosavefirstokid) != 'disabled'))
 				|| $forceregistration) {
-					// No ping done if we are into an alpha version
-					if (strpos('alpha', DOL_VERSION) > 0 && !$forceregistration) {
-						print "\n<!-- NO JS CODE TO ENABLE the registration. It is an alpha version -->\n";
-					} elseif (empty($_COOKIE['DOLINSTALLNOPING_'.$hash_unique_id]) || $forceregistration) {	// Cookie is set when we uncheck the checkbox in the installation wizard.
+					// No registration done if we are into an alpha or beta version
+					if ((strpos('alpha', DOL_VERSION) > 0 || strpos('beta', DOL_VERSION) > 0) && !$forceregistration) {
+						print "\n<!-- NO JS CODE TO ENABLE the registration. It is an alpha or beta version -->\n";
+					} elseif (empty($_COOKIE['DOLINSTALLNOPING_'.$hash_unique_id_registration]) || $forceregistration) {	// Cookie is set when we uncheck the checkbox in the installation wizard.
 						// Output code for ping
 						include_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
 
 						$arrayofdata = array(
 							'action' => 'dolibarrregistration',
+							'datesys' => dol_print_date(dol_now(), 'standard', 'gmt'),
 
 							'company_name' => getDolGlobalString('BLOCKEDLOG_REGISTRATION_NAME', $mysoc->name),
 							'company_email' => getDolGlobalString('BLOCKEDLOG_REGISTRATION_EMAIL', $mysoc->email),
@@ -3820,6 +3864,38 @@ if (!function_exists("llxFooter")) {
 				}
 			}
 		}
+
+		// Add code for the asynchronous emulation of pushing a tracking counter of the use of the BlockedLog module trigger(for test purposes)
+		// You can use &forceregistration=1 in parameters to force also the recall if the call was already sent.
+		$forcepushcounter = GETPOSTINT('forcepushcounter');
+
+		if (isModEnabled('blockedlog') && ($_SERVER["PHP_SELF"] == DOL_URL_ROOT.'/index.php') && $forcepushcounter) {
+			include_once DOL_DOCUMENT_ROOT.'/blockedlog/lib/blockedlog.lib.php';
+			if (!isALNEQualifiedVersion()) {
+				print "\n<!-- NO CALL TO API TO PUSH COUNTER. Not a LNE qualified version -->\n";
+			} elseif (!isRegistrationDataSaved()) {
+				print "\n<!-- NO CALL TO API TO PUSH COUNTER. Registration data not saved -->\n";
+			} else {
+				// Get last ID and hash into $tmpresult
+				include_once DOL_DOCUMENT_ROOT.'/blockedlog/class/blockedlog.class.php';
+				$tmpblockedlog = new BlockedLog($db);
+				$tmpresult = $tmpblockedlog->getPreviousHash(0, 0);
+
+				if ((int) $tmpresult['previousid']) {
+					$tmpresult2 = $tmpblockedlog->getPreviousHash(0, (int) $tmpresult['previousid']);	// Get previous record
+
+					if ((int) $tmpresult2['previousid']) {
+						// Call remote API service to record the last counter
+						$resultcall = callApiToPushCounter((int) $tmpresult['previousid'], $tmpresult['previoushash'], 1, (int) $tmpresult2['previousid'], $tmpresult2['previoushash']);
+
+						print "\n<!-- API TO PUSH COUNTER WAS CALLED. Result is ".$resultcall.". You may have log into dolibarr_dolibarrpushcounter.log -->\n";
+					}
+				} else {
+					print "\n<!-- NO CALL TO API TO PUSH COUNTER. Last rowid and signature not found -->\n";
+				}
+			}
+		}
+
 
 		$parameters = array();
 		$reshook = $hookmanager->executeHooks('beforeBodyClose', $parameters, $object, $action); // Note that $action and $object may have been modified by some hooks

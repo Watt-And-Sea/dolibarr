@@ -178,7 +178,7 @@ class Invoices extends DolibarrApi
 
 		// Add online_payment_url, copied from order
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/payments.lib.php';
-		$this->invoice->online_payment_url = getOnlinePaymentUrl(0, 'invoice', $this->invoice->ref);
+		$this->invoice->online_payment_url = getOnlinePaymentUrl(0, 'invoice', (string) $this->invoice->ref);
 
 		return $this->_cleanObjectDatas($this->invoice);
 	}
@@ -309,7 +309,7 @@ class Invoices extends DolibarrApi
 
 					// Add online_payment_url, copied from order
 					require_once DOL_DOCUMENT_ROOT.'/core/lib/payments.lib.php';
-					$invoice_static->online_payment_url = getOnlinePaymentUrl(0, 'invoice', $invoice_static->ref);
+					$invoice_static->online_payment_url = getOnlinePaymentUrl(0, 'invoice', (string) $invoice_static->ref);
 
 					$obj_ret[] = $this->_filterObjectProperties($this->_cleanObjectDatas($invoice_static), $properties);
 				}
@@ -887,7 +887,7 @@ class Invoices extends DolibarrApi
 
 		// update bank account
 		if (!empty($this->invoice->fk_account)) {
-			if ($this->invoice->setBankAccount($this->invoice->fk_account) == 0) {
+			if ($this->invoice->setBankAccount((int) $this->invoice->fk_account) == 0) {
 				throw new RestException(400, $this->invoice->error);
 			}
 		}
@@ -1181,7 +1181,7 @@ class Invoices extends DolibarrApi
 
 		// copy from order
 		require_once DOL_DOCUMENT_ROOT.'/core/lib/payments.lib.php';
-		$this->invoice->online_payment_url = getOnlinePaymentUrl(0, 'invoice', $this->invoice->ref);
+		$this->invoice->online_payment_url = getOnlinePaymentUrl(0, 'invoice', (string) $this->invoice->ref);
 
 		return $this->_cleanObjectDatas($this->invoice);
 	}
@@ -1708,7 +1708,6 @@ class Invoices extends DolibarrApi
 		$totalpaid = $this->invoice->getSommePaiement();
 		$totalcreditnotes = $this->invoice->getSumCreditNotesUsed();
 		$totaldeposits = $this->invoice->getSumDepositsUsed();
-		$resteapayer = price2num($this->invoice->total_ttc - $totalpaid - $totalcreditnotes - $totaldeposits, 'MT');
 
 		$this->db->begin();
 
@@ -1717,13 +1716,13 @@ class Invoices extends DolibarrApi
 
 		// Clean parameters amount if payment is for a credit note
 		if ($this->invoice->type == Facture::TYPE_CREDIT_NOTE) {
-			$resteapayer = price2num($resteapayer, 'MT');
-			$amounts[$id] = (float) price2num(-1 * (float) $resteapayer, 'MT');
+			$resteapayer = price2num($this->invoice->total_ttc + $totalpaid - $totalcreditnotes - $totaldeposits, 'MT');
+			$amounts[$id] = (float) price2num(-1 * abs((float) $resteapayer), 'MT');
 			// Multicurrency
 			$newvalue = price2num($this->invoice->multicurrency_total_ttc, 'MT');
 			$multicurrency_amounts[$id] = (float) price2num(-1 * (float) $newvalue, 'MT');
 		} else {
-			$resteapayer = price2num($resteapayer, 'MT');
+			$resteapayer = price2num($this->invoice->total_ttc - $totalpaid - $totalcreditnotes - $totaldeposits, 'MT');
 			$amounts[$id] = (float) $resteapayer;
 			// Multicurrency
 			$newvalue = price2num($this->invoice->multicurrency_total_ttc, 'MT');
