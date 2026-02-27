@@ -1217,7 +1217,7 @@ class Mos extends DolibarrApi
                 $newline->batch             = $batch;
                 $newline->role              = $done_role;
                 $newline->fk_mrp_production = $orig_id;   // ← C'EST ÇA QUI FAIT APPARAÎTRE LES QTES
-                $newline->date_creation      = $now;
+                $newline->date_creation      = $this->date_creation;
                 $newline->fk_stock_movement = $moveid;
                 $newline->fk_user_creat     = DolibarrApiAccess::$user->id;
 
