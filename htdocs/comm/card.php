@@ -166,6 +166,14 @@ if (GETPOST('attribute', 'aZ09') && isset($extrafields->attributes[$object->tabl
 	$permissiontoeditextra = dol_eval((string) $extrafields->attributes[$object->table_element]['perms'][GETPOST('attribute', 'aZ09')]);
 }
 
+// Vérification personnalisée pour les tiers restreints ( attention parfois socid, parfois id)
+$restricted_list = getDolGlobalString('RESTRICTED_THIRDPARTIES_LIST');
+$restricted_ids = empty($restricted_list) ? array() : explode(',', $restricted_list);
+if (!$user->admin && in_array($id, array_map('intval', $restricted_ids))) {
+    accessforbidden("RestrictedThirdPartyAccess");
+    exit;
+}
+
 
 /*
  * Actions

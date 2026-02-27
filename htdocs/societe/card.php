@@ -181,10 +181,10 @@ if (!($object->id > 0) && $action == 'view') {
 	recordNotFound();
 }
 
-// Vérification personnalisée pour les tiers restreints
-$restricted_list = getDolGlobalString('RESTRICTED_LIST');
+// Vérification personnalisée pour les tiers restreints ( attention parfois socid, parfois id)
+$restricted_list = getDolGlobalString('RESTRICTED_THIRDPARTIES_LIST');
 $restricted_ids = empty($restricted_list) ? array() : explode(',', $restricted_list);
-if (!$user->admin && in_array($id, array_map('intval', $restricted_ids))) {
+if (!$user->admin && in_array($socid, array_map('intval', $restricted_ids))) {
     accessforbidden("RestrictedThirdPartyAccess");
     exit;
 }
