@@ -896,7 +896,7 @@ if (!getDolGlobalInt('MAIN_DISABLE_FULL_SCANLIST')) {
 }
 
 // Filtrer les factures des tiers restreints pour les utilisateurs non-administrateurs
-$restricted_list = getDolGlobalString('RESTRICTED_LIST');
+$restricted_list = getDolGlobalString('RESTRICTED_THIRDPARTIES_LIST');
 $restricted_ids = empty($restricted_list) ? array() : explode(',', $restricted_list);
 if (!$user->admin && !empty($restricted_ids)) {
     $sql .= " AND f.fk_soc NOT IN (".implode(',', array_map('intval', $restricted_ids)).")";
