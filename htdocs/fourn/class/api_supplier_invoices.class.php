@@ -322,7 +322,7 @@ class SupplierInvoices extends DolibarrApi
 	 *
 	 * @param int   $id Supplier invoice ID
 	 *
-	 * @url POST    {id}/delete
+	 * @url DELETE {id}
 	 *
 	 * @return array
 	 * @phan-return array{success:array{code:int,message:string}}
@@ -330,7 +330,7 @@ class SupplierInvoices extends DolibarrApi
 	 *
 	 * @throws RestException 403
 	 * @throws RestException 404
-	 * @throws RestException 500	System error
+	 * @throws RestException 500
 	 */
 	public function delete($id)
 	{
