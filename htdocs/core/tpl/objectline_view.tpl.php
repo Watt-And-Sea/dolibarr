@@ -505,7 +505,7 @@ if (isset($this->situation_cycle_ref) && $this->situation_cycle_ref) {
 
 if ($usemargins && isModEnabled('margin') && empty($user->socid)) {
 	if ($user->hasRight('margins', 'creer')) { ?>
-		<td class="linecolmargin1 nowrap margininfos right"><?php $coldisplay++; ?><?php print price($line->pa_ht); ?></td>
+		<td class="linecolmargin1 nowrap margininfos right"><?php $coldisplay++; ?><?php print price(price2num($line->pa_ht, 'MT')); ?></td>
 	<?php }
 	if (getDolGlobalString('DISPLAY_MARGIN_RATES') && $user->hasRight('margins', 'liretous')) { ?>
 		<td class="linecolmargin2 nowrap margininfos right"><?php $coldisplay++; ?><?php print(($line->pa_ht == 0) ? 'n/a' : price(price2num($line->marge_tx, 'MT')).'%'); ?></td>

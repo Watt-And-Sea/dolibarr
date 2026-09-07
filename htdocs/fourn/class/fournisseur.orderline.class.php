@@ -286,51 +286,51 @@ class CommandeFournisseurLigne extends CommonOrderLine
 		dol_syslog(get_class($this)."::insert rang=".$this->rang);
 
 		// Clean parameters
-		if (empty($this->tva_tx)) {
+		if (!isset($this->tva_tx) || empty($this->tva_tx)) {
 			$this->tva_tx = 0;
 		}
-		if (empty($this->localtax1_tx)) {
+		if (!isset($this->localtax1_tx) || empty($this->localtax1_tx)) {
 			$this->localtax1_tx = 0;
 		}
-		if (empty($this->localtax2_tx)) {
+		if (!isset($this->localtax2_tx) || empty($this->localtax2_tx)) {
 			$this->localtax2_tx = 0;
 		}
-		if (empty($this->localtax1_type)) {
+		if (!isset($this->localtax1_type) || empty($this->localtax1_type)) {
 			$this->localtax1_type = '0';
 		}
-		if (empty($this->localtax2_type)) {
+		if (!isset($this->localtax2_type) || empty($this->localtax2_type)) {
 			$this->localtax2_type = '0';
 		}
-		if (empty($this->total_localtax1)) {
+		if (!isset($this->total_localtax1) || empty($this->total_localtax1)) {
 			$this->total_localtax1 = 0;
 		}
-		if (empty($this->total_localtax2)) {
+		if (!isset($this->total_localtax2) || empty($this->total_localtax2)) {
 			$this->total_localtax2 = 0;
 		}
-		if (empty($this->rang)) {
+		if (!isset($this->rang) || empty($this->rang)) {
 			$this->rang = 0;
 		}
-		if (empty($this->remise_percent)) {
+		if (!isset($this->remise_percent) || empty($this->remise_percent)) {
 			$this->remise_percent = 0;
 		}
-		if (empty($this->info_bits)) {
+		if (!isset($this->info_bits) || empty($this->info_bits)) {
 			$this->info_bits = 0;
 		}
-		if (empty($this->special_code)) {
+		if (!isset($this->special_code) || empty($this->special_code)) {
 			$this->special_code = 0;
 		}
-		if (empty($this->fk_parent_line)) {
+		if (!isset($this->fk_parent_line) || empty($this->fk_parent_line)) {
 			$this->fk_parent_line = 0;
 		}
-		if (empty($this->pa_ht)) {
+		if (!isset($this->pa_ht) || empty($this->pa_ht)) {
 			$this->pa_ht = 0;
 		}
 
 		// Multicurrency
-		if (!empty($this->multicurrency_code)) {
+		if (isset($this->multicurrency_code) && !empty($this->multicurrency_code)) {
 			list($this->fk_multicurrency, $this->multicurrency_tx) = MultiCurrency::getIdAndTxFromCode($this->db, $this->multicurrency_code);
 		}
-		if (empty($this->fk_multicurrency)) {
+		if (!isset($this->fk_multicurrency) || empty($this->fk_multicurrency)) {
 			$this->multicurrency_code = $conf->currency;
 			$this->fk_multicurrency = 0;
 			$this->multicurrency_tx = 1;

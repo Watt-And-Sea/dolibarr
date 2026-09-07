@@ -979,43 +979,43 @@ class Product extends CommonObject
 		$this->price_min_ttc = (float) price2num($this->price_min_ttc);
 		$this->price_min = (float) price2num($this->price_min);
 		$this->price_label = trim($this->price_label);
-		if (empty($this->tva_tx)) {
+		if (!isset($this->tva_tx) || empty($this->tva_tx)) {
 			$this->tva_tx = 0;
 		}
-		if (empty($this->tva_npr)) {
+		if (!isset($this->tva_npr) || empty($this->tva_npr)) {
 			$this->tva_npr = 0;
 		}
 		// Local taxes
-		if (empty($this->localtax1_tx)) {
+		if (!isset($this->localtax1_tx) || empty($this->localtax1_tx)) {
 			$this->localtax1_tx = 0;
 		}
-		if (empty($this->localtax2_tx)) {
+		if (!isset($this->localtax2_tx) || empty($this->localtax2_tx)) {
 			$this->localtax2_tx = 0;
 		}
-		if (empty($this->localtax1_type)) {
+		if (!isset($this->localtax1_type) || empty($this->localtax1_type)) {
 			$this->localtax1_type = '0';
 		}
-		if (empty($this->localtax2_type)) {
+		if (!isset($this->localtax2_type) || empty($this->localtax2_type)) {
 			$this->localtax2_type = '0';
 		}
-		if (empty($this->price)) {
+		if (!isset($this->price) || empty($this->price)) {
 			$this->price = 0;
 		}
-		if (empty($this->price_min)) {
+		if (!isset($this->price_min) || empty($this->price_min)) {
 			$this->price_min = 0;
 		}
 		// Price by quantity
-		if (empty($this->price_by_qty)) {
+		if (!isset($this->price_by_qty) || empty($this->price_by_qty)) {
 			$this->price_by_qty = 0;
 		}
 
-		if (empty($this->status)) {
+		if (!isset($this->status) || empty($this->status)) {
 			$this->status = 0;
 		}
-		if (empty($this->status_buy)) {
+		if (!isset($this->status_buy) || empty($this->status_buy)) {
 			$this->status_buy = 0;
 		}
-		if (empty($this->stockable_product)) {
+		if (!isset($this->stockable_product) || empty($this->stockable_product)) {
 			$this->stockable_product = 0;
 		}
 

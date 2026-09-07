@@ -1808,6 +1808,11 @@ class Reception extends CommonObject
 		// phpcs:enable
 		$this->lines = array();
 
+		// PHP 8 fix : initialisation obligatoire des totaux (sinon Undefined property sur +=)
+		$this->total_ht  ??= 0;
+		$this->total_tva ??= 0;
+		$this->total_ttc ??= 0;
+
 		require_once DOL_DOCUMENT_ROOT.'/fourn/class/fournisseur.commande.dispatch.class.php';
 
 		$sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."receptiondet_batch";
@@ -1815,7 +1820,7 @@ class Reception extends CommonObject
 
 		$resql = $this->db->query($sql);
 
-		if (!empty($resql)) {
+		if ($resql) {
 			while ($obj = $this->db->fetch_object($resql)) {
 				$line = new CommandeFournisseurDispatch($this->db);
 
@@ -1824,48 +1829,66 @@ class Reception extends CommonObject
 				// TODO Remove or keep this ?
 				$line->fetch_product();
 
+				// PHP 8 fix : initialisation safe des propriétés du line
+				$line->qty_asked            ??= 0;
+				$line->description          ??= '';
+				$line->desc                 ??= '';
+				$line->tva_tx               ??= 0;
+				$line->vat_src_code         ??= '';
+				$line->subprice             ??= 0;
+				$line->multicurrency_subprice ??= 0;
+				$line->remise_percent       ??= 0;
+				$line->label                ??= '';
+				$line->ref_supplier         ??= '';
+				$line->total_ht             ??= 0;
+				$line->total_ttc            ??= 0;
+				$line->total_tva            ??= 0;
+
 				$sql_commfourndet = 'SELECT qty, ref, label, description, tva_tx, vat_src_code, subprice, multicurrency_subprice, remise_percent, total_ht, total_ttc, total_tva';
 				$sql_commfourndet .= ' FROM '.MAIN_DB_PREFIX.'commande_fournisseurdet';
 				$sql_commfourndet .= ' WHERE rowid = '.((int) $line->fk_commandefourndet);
 				$sql_commfourndet .= ' ORDER BY rang';
 
 				$resql_commfourndet = $this->db->query($sql_commfourndet);
-				if (!empty($resql_commfourndet)) {
-					$obj = $this->db->fetch_object($resql_commfourndet);
-					$line->qty_asked = $obj->qty;
-					$line->description = $obj->description;
-					$line->desc = $obj->description;
-					$line->tva_tx = $obj->tva_tx;
-					$line->vat_src_code = $obj->vat_src_code;
-					$line->subprice = $obj->subprice;
-					$line->multicurrency_subprice = $obj->multicurrency_subprice;
-					$line->remise_percent = $obj->remise_percent;
-					$line->label = !empty($obj->label) ? $obj->label : (is_object($line->product) ? $line->product->label : '');
-					$line->ref_supplier = $obj->ref;
-					$line->total_ht = $obj->total_ht;
-					$line->total_ttc = $obj->total_ttc;
-					$line->total_tva = $obj->total_tva;
+
+				if ($resql_commfourndet && ($objdet = $this->db->fetch_object($resql_commfourndet))) {
+					$line->qty_asked            = $objdet->qty ?? 0;
+					$line->description          = $objdet->description ?? '';
+					$line->desc                 = $objdet->description ?? '';
+					$line->tva_tx               = $objdet->tva_tx ?? 0;
+					$line->vat_src_code         = $objdet->vat_src_code ?? '';
+					$line->subprice             = $objdet->subprice ?? 0;
+					$line->multicurrency_subprice = $objdet->multicurrency_subprice ?? 0;
+					$line->remise_percent       = $objdet->remise_percent ?? 0;
+					$line->label                = !empty($objdet->label) ? $objdet->label : (is_object($line->product) ? $line->product->label ?? '' : '');
+					$line->ref_supplier         = $objdet->ref ?? '';
+					$line->total_ht             = $objdet->total_ht ?? 0;
+					$line->total_ttc            = $objdet->total_ttc ?? 0;
+					$line->total_tva            = $objdet->total_tva ?? 0;
 				} else {
-					$line->qty_asked = 0;
-					$line->description = '';
-					$line->desc = '';
-					$line->label = $obj->label;
+					// Safe defaults (le $obj->label de l'ancien else était une erreur)
+					$line->qty_asked    = 0;
+					$line->description  = '';
+					$line->desc         = '';
+					$line->label        = is_object($line->product) ? $line->product->label ?? '' : '';
 				}
 
+				// Calculs avec valeurs maintenant toujours définies
 				$pu_ht = ($line->subprice * $line->qty) * (100 - $line->remise_percent) / 100;
-				$tva = $pu_ht * $line->tva_tx / 100;
-				$this->total_ht += $pu_ht;
-				$this->total_tva += $pu_ht * $line->tva_tx / 100;
+				$tva   = $pu_ht * $line->tva_tx / 100;
 
+				$this->total_ht  += $pu_ht;
+				$this->total_tva += $tva;
 				$this->total_ttc += $pu_ht + $tva;
 
 				if (isModEnabled('productbatch') && !empty($line->batch)) {
 					$detail_batch = new stdClass();
-					$detail_batch->eatby = $line->eatby;
-					$detail_batch->sellby = $line->sellby;
-					$detail_batch->batch = $line->batch;
-					$detail_batch->qty = $line->qty;
+					$detail_batch->eatby = $line->eatby ?? '';
+					$detail_batch->sellby = $line->sellby ?? '';
+					$detail_batch->batch  = $line->batch;
+					$detail_batch->qty    = $line->qty ?? 0;
 
+					$line->detail_batch ??= [];
 					$line->detail_batch[] = $detail_batch;
 				}
 

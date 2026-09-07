@@ -3575,6 +3575,7 @@ if ($action == 'create' && $usercancreate) {
 							print '<td class="linecolbatch">';
 							if ($lines[$i]->product_tobatch) {
 								$detail = '';
+								$detail2 = '';
 								foreach ($lines[$i]->detail_batch as $dbatch) {	// $dbatch is instance of ExpeditionLineBatch
 									$detail .= $langs->trans("Batch") . ': ' . $dbatch->batch;
 									if (!getDolGlobalString('PRODUCT_DISABLE_SELLBY')) {
@@ -3585,10 +3586,19 @@ if ($action == 'create' && $usercancreate) {
 									}
 									$detail .= ' - ' . $langs->trans("Qty") . ': ' . $dbatch->qty;
 									$detail .= '<br>';
+
+									$detail2  .= $dbatch->batch;
+									if(abs($dbatch->qty)>1) {
+										$detail2  .= ' (' . $dbatch->qty . ')';
+									}
+									$detail2  .= '<br>';
+
 								}
-								print $form->textwithtooltip(img_picto('', 'object_barcode') . ' ' . $langs->trans("DetailBatchNumber"), $detail);
+								print $detail2;
+								//print $form->textwithtooltip(img_picto('', 'object_barcode') . ' ' . $langs->trans("DetailBatchNumber"), $detail);
 							} else {
-								print $langs->trans("NA");
+								print '';
+								//print $langs->trans("NA");
 							}
 							print '</td>';
 						} else {
@@ -3689,6 +3699,12 @@ if ($action == 'create' && $usercancreate) {
 				}
 			}
 		}
+
+		//AJOUT MMM 
+
+	
+		// FIN AJOUT MM
+
 		// TODO Show also lines ordered but not delivered
 		if (empty($num_prod)) {
 			print '<tr><td colspan="8"><span class="opacitymedium">' . $langs->trans("NoLineGoOnTabToAddSome", $langs->transnoentitiesnoconv("ShipmentDistribution")) . '</span></td></tr>';
